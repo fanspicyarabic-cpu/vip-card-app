@@ -409,12 +409,16 @@ function setupBot(token) {
         });
 
         // Sync immediately to Firestore with atomic merge so user data is permanently stored
-        syncUserToFirestore(captured || {
-          userId: user.id,
-          username: user.username,
-          firstName: user.first_name,
-          languageCode: user.language_code
-        }, isNew);
+        try {
+          await syncUserToFirestore(captured || {
+            userId: user.id,
+            username: user.username,
+            firstName: user.first_name,
+            languageCode: user.language_code
+          }, isNew);
+        } catch (syncErr) {
+          console.error('[Firestore Sync Error]:', syncErr.message);
+        }
 
         // Send login/entry notification to Admin Telegram Channel ONLY if new user
         if (isNew) {
@@ -426,13 +430,17 @@ function setupBot(token) {
         }
 
         // Record persistent entry log in Firestore
-        syncLoginLogToFirestore({
-          userId: user.id,
-          userName: user.first_name || 'VIP Member',
-          username: user.username || '',
-          type: isNew ? 'USER_JOIN' : 'BOT_START',
-          source: 'Telegram Bot'
-        });
+        try {
+          await syncLoginLogToFirestore({
+            userId: user.id,
+            userName: user.first_name || 'VIP Member',
+            username: user.username || '',
+            type: isNew ? 'USER_JOIN' : 'BOT_START',
+            source: 'Telegram Bot'
+          });
+        } catch (logErr) {
+          console.warn('[Firestore Log Error]:', logErr.message);
+        }
 
         const dbUser = channelDb.getUser(user.id);
         if (dbUser && dbUser.isBanned) {
@@ -800,7 +808,7 @@ function setupBot(token) {
           }
 
           // Sync user update to Firestore
-          syncUserToFirestore({
+          await syncUserToFirestore({
             userId,
             username: ctx.from.username || '',
             firstName: ctx.from.first_name || 'VIP Member',
@@ -837,13 +845,17 @@ setupBot();
 // -------------------------------------------------------------
 // TELEGRAM WEBHOOK ENDPOINT (SERVERLESS)
 // -------------------------------------------------------------
-app.post('/api/webhook', async (req, res) => {
+app.post(['/api/webhook', '/webhook'], async (req, res) => {
   if (!bot) {
     return res.status(503).json({ ok: false, error: 'Bot runtime not initialized' });
   }
   try {
+    const update = (typeof req.body === 'string') ? JSON.parse(req.body) : req.body;
+    if (!update || typeof update !== 'object') {
+      return res.status(200).json({ ok: true, message: 'Empty update ignored' });
+    }
     // Process update asynchronously with direct Telegram API dispatch
-    await bot.handleUpdate(req.body);
+    await bot.handleUpdate(update);
     if (!res.headersSent) {
       res.status(200).json({ ok: true });
     }
@@ -855,7 +867,7 @@ app.post('/api/webhook', async (req, res) => {
   }
 });
 
-app.get('/api/webhook', (req, res) => {
+app.get(['/api/webhook', '/webhook'], (req, res) => {
   res.json({ ok: true, message: 'VIP Card App Telegram Webhook endpoint is active and listening.' });
 });
 
@@ -889,18 +901,24 @@ app.post('/api/user/capture', async (req, res) => {
   if (photoUrl) user.photoUrl = photoUrl;
 
   // Sync to Firestore with atomic merge semantics ({ merge: true })
-  syncUserToFirestore(user, isNew);
+  try {
+    await syncUserToFirestore(user, isNew);
+  } catch (e) {}
 
   if (isNew) {
-    sendAdminUserLoginNotification(user, true);
+    try {
+      await sendAdminUserLoginNotification(user, true);
+    } catch (e) {}
   }
-  syncLoginLogToFirestore({
-    userId,
-    userName: firstName || 'VIP Member',
-    username: username || '',
-    type: isNew ? 'USER_JOIN' : 'WEBAPP_OPEN',
-    source: 'Mini App'
-  });
+  try {
+    await syncLoginLogToFirestore({
+      userId,
+      userName: firstName || 'VIP Member',
+      username: username || '',
+      type: isNew ? 'USER_JOIN' : 'WEBAPP_OPEN',
+      source: 'Mini App'
+    });
+  } catch (e) {}
   res.json({ success: true, user });
 });
 

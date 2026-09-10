@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 15,
+      "memory": 1024
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -7,6 +13,10 @@
     },
     {
       "source": "/api",
+      "destination": "/api/index.js"
+    },
+    {
+      "source": "/webhook",
       "destination": "/api/index.js"
     },
     {
