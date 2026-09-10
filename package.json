@@ -1,0 +1,31 @@
+{
+  "name": "vip-card-app",
+  "version": "1.0.0",
+  "description": "VIP Card App - Telegram-Native Digital Marketplace powered by Telegram Stars (XTR)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "set-webhook": "node scripts/set-webhook.js"
+  },
+
+  "keywords": [
+    "telegram-mini-app",
+    "telegram-stars",
+    "marketplace",
+    "gift-cards",
+    "binance",
+    "likecard",
+    "pubg"
+  ],
+  "author": "VIP Card Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^14.3.0",
+    "telegraf": "^4.16.3"
+  }
+}

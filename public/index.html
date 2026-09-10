@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>VIP Card App - متجر البطاقات الرقمية والشحن الفوري</title>
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Master Catalog & Brand Assets Preload -->
+  <script src="js/brand-assets.js?v=1.3.4"></script>
+  <script src="js/catalog-data.js?v=1.3.4"></script>
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/style.css?v=1.3.4" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>" />
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- =========================================================
+         1. TOP HEADER & USER POINTS / STARS BALANCE
+         ========================================================= -->
+    <header class="top-header">
+      <div class="brand-greeting">
+        <div class="user-avatar-container" id="userAvatarContainer">
+          <img id="userAvatarImg" class="user-avatar-img" src="" alt="Avatar" style="display:none;" />
+          <div id="userAvatarBadge" class="vip-logo-badge">
+            <span class="crown">👑</span>
+            <span id="userAvatarText">VIP</span>
+          </div>
+        </div>
+        <div class="user-greeting-text">
+          <h2 id="userGreetingTitle">أهلاً بك 👋</h2>
+          <div class="user-status-row">
+            <span class="status-indicator"></span>
+            <span id="userNameDisplay">عضو مميز</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls: Currency Selector & Points Balance -->
+      <div class="header-actions">
+        <!-- Currency Selector Dropdown -->
+        <div class="currency-selector-wrap" title="تغيير العملة">
+          <select id="currencySelector" class="currency-select" onchange="CurrencyModule.setCurrency(this.value)">
+            <option value="SAR">🇸🇦 SAR</option>
+            <option value="IQD">🇮🇶 IQD</option>
+            <option value="USD">🇺🇸 USD</option>
+            <option value="XTR">⭐ Stars</option>
+          </select>
+        </div>
+
+        <!-- Balance Display: Telegram Stars Wallet -->
+        <div class="points-balance-chip" onclick="AppModule.switchTab('account')" title="رصيد نجوم تيليجرام - اضغط للشحن" style="background: rgba(234,179,8,0.15); border: 1px solid rgba(234,179,8,0.4);">
+          <span class="star-icon">⭐</span>
+          <span class="points-num" id="userStarsDisplay" style="color: #fde047;">0</span>
+          <span class="points-label" style="color: #fde047;">نجمة</span>
+        </div>
+
+        <!-- Balance Display: Loyalty Points -->
+        <div class="points-balance-chip" onclick="AppModule.openLoyaltyModal()" title="رصيد نقاط الولاء">
+          <span class="star-icon">🎁</span>
+          <span class="points-num" id="userPointsDisplay">0</span>
+          <span class="points-label">نقطة</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- =========================================================
+         2. GOLD LOYALTY BANNER (VIP LEVEL - LIKECARD STYLE)
+         ========================================================= -->
+    <section class="vip-loyalty-banner" id="vipBanner">
+      <div class="banner-top">
+        <div class="vip-badge-pill" id="vipBadgePill">
+          <span id="tierBadgeName">المستوى البرونزي</span>
+          <span id="tierBadgeIcon">🥉</span>
+        </div>
+        <button class="perks-btn" onclick="AppModule.openLoyaltyModal()">
+          <span>عرض المزايا</span>
+          <span class="perks-arrow">◀</span>
+        </button>
+      </div>
+
+      <!-- Progress to next tier -->
+      <div class="tier-progress-wrap">
+        <div class="tier-progress-track">
+          <div class="tier-progress-fill" id="tierProgressFill" style="width: 0%;"></div>
+        </div>
+        <div class="tier-progress-text">
+          <span class="tier-hint-text" id="tierHintText">اشتري بقيمة 100 نجمة للترقية</span>
+          <span class="tier-target-badge" id="tierTargetBadge">المستوى الفضي 🥈</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         VIEW 1: HOME (LIKECARD-STYLE 2-COLUMN CATEGORIES GRID)
+         ========================================================= -->
+    <main id="tab-home" class="page-tab">
+      <!-- In-App Announcement Banner (Injected via Broadcast System) -->
+      <div id="inAppBroadcastBanner" style="display: none;"></div>
+
+      <div class="section-header">
+        <h3 class="section-title">
+          <span>الأقسام الرئيسية والبطاقات</span>
+          <span>⚡</span>
+        </h3>
+        <span class="section-counter">متجر شامل</span>
+      </div>
+
+      <!-- 2-Column Responsive Categories Grid (Preserved LikeCard Layout) -->
+      <div class="likecard-grid">
+
+        <!-- 1. PUBG Mobile -->
+        <div class="category-card cat-pubg" onclick="AppModule.openCategory('pubg', 'ببجي موبايل')">
+          <div class="card-title-group">
+            <h4 class="card-title">ببجي موبايل</h4>
+            <span class="card-subtitle">شدات وبطاقات ببجي</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="28" fill="#F59E0B" fill-opacity="0.15"/>
+              <path d="M18 28C18 20.268 24.268 14 32 14C39.732 14 46 20.268 46 28V36C46 41.523 41.523 46 36 46H28C22.477 46 18 41.523 18 36V28Z" fill="#F59E0B"/>
+              <path d="M22 30H42V35C42 37.761 39.761 40 37 40H27C24.239 40 22 37.761 22 35V30Z" fill="#18181B"/>
+              <circle cx="28" cy="34" r="2" fill="#F59E0B"/>
+              <circle cx="36" cy="34" r="2" fill="#F59E0B"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 2. Apple / iTunes (أمريكا، تركيا، الإمارات، السعودية، اليابان، بريطانيا) -->
+        <div class="category-card cat-apple" onclick="AppModule.openCategory('apple', 'بطاقات أبل المتجر السعودي والأمريكي والدولي')">
+          <div class="card-title-group">
+            <h4 class="card-title">أبل / iTunes</h4>
+            <span class="card-subtitle">سعودي، أمريكي، تركي 🍏</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <path d="M36.8 14C37.8 12.7 38.5 11 38.3 9.2C36.8 9.3 34.9 10.3 33.8 11.6C32.9 12.7 32.2 14.4 32.4 16.2C34.1 16.3 35.8 15.3 36.8 14ZM42.5 35.5C42.5 30.6 46.4 28.2 46.6 28C44.4 24.8 41 24.3 39.8 24.2C36.9 23.9 34.1 26 32.6 26C31.1 26 28.8 24.2 26.4 24.2C23.3 24.2 20.4 26 18.8 28.8C15.5 34.6 18 43.1 21.1 47.7C22.7 49.9 24.4 52.4 26.8 52.3C29.2 52.2 30.1 50.7 32.9 50.7C35.7 50.7 36.6 52.3 39 52.3C41.5 52.2 43 50 44.5 47.8C46.3 45.3 47 42.8 47.1 42.6C47 42.5 42.5 40.8 42.5 35.5Z" fill="#F8FAFC"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 3. Google Play (السعودية، أمريكا، أوروبا، الإمارات، العراق، بريطانيا) -->
+        <div class="category-card cat-google" onclick="AppModule.openCategory('google', 'بطاقات جوجل بلاي')">
+          <div class="card-title-group">
+            <h4 class="card-title">جوجل بلاي</h4>
+            <span class="card-subtitle">سعودي، أمريكي، عراقي</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <path d="M16 14.5L34 32.5L16 50.5V14.5Z" fill="#00D3FF"/>
+              <path d="M42 24.5L16 14.5L34 32.5L42 24.5Z" fill="#00E676"/>
+              <path d="M16 50.5L42 40.5L34 32.5L16 50.5Z" fill="#FF3D00"/>
+              <path d="M48 32.5L42 24.5L34 32.5L42 40.5L48 32.5Z" fill="#FFC400"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 4. Telecom (STC & Zain) -->
+        <div class="category-card cat-telecom" onclick="AppModule.openCategory('telecom', 'الاتصالات (STC وزين)')">
+          <div class="card-title-group">
+            <h4 class="card-title">الاتصالات (STC وزين)</h4>
+            <span class="card-subtitle">سوا، كويك نت، زين 📶</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="26" fill="#6366F1" fill-opacity="0.2"/>
+              <path d="M22 42C22 36.477 26.477 32 32 32C37.523 32 42 36.477 42 42" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="32" cy="24" r="6" fill="#FACC15"/>
+              <path d="M16 46C16 37.163 23.163 30 32 30C40.837 30 48 37.163 48 46" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="3 3"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 5. LikeCard Wallets (محافظ لايك كارد) -->
+        <div class="category-card cat-likecard" onclick="AppModule.openCategory('likecard', 'محافظ لايك كارد')">
+          <div class="card-title-group">
+            <h4 class="card-title">محافظ لايك كارد</h4>
+            <span class="card-subtitle">شحن محافظ الخليج ومصر 💳</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <rect x="12" y="16" width="40" height="32" rx="8" fill="#10B981"/>
+              <circle cx="38" cy="32" r="4" fill="#FACC15"/>
+              <path d="M12 26H52" stroke="#065F46" stroke-width="3"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 6. Razer Gold (الأمريكية، العالمية، التركية) -->
+        <div class="category-card cat-razer" onclick="AppModule.openCategory('razer', 'رايزر جولد (Razer Gold)')">
+          <div class="card-title-group">
+            <h4 class="card-title">رايزر جولد</h4>
+            <span class="card-subtitle">أمريكي، عالمي، تركي 🪙</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="26" fill="#059669" fill-opacity="0.2"/>
+              <path d="M32 16L44 23V37L32 44L20 37V23L32 16Z" stroke="#22C55E" stroke-width="3" fill="#064E3B"/>
+              <circle cx="32" cy="30" r="5" fill="#FACC15"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 7. VISA & Gaming Vouchers -->
+        <div class="category-card cat-visa" onclick="AppModule.openCategory('visa', 'فيزا وعروض الألعاب')">
+          <div class="card-title-group">
+            <h4 class="card-title">فيزا وعروض الألعاب</h4>
+            <span class="card-subtitle">بطاقات افتراضية 💳</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <rect x="10" y="18" width="44" height="28" rx="6" fill="#3B82F6"/>
+              <rect x="10" y="24" width="44" height="6" fill="#1E3A8A"/>
+              <circle cx="20" cy="37" r="4" fill="#FACC15" fill-opacity="0.9"/>
+              <circle cx="26" cy="37" r="4" fill="#EF4444" fill-opacity="0.8"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 8. Flash Sale -->
+        <div class="category-card cat-flash" onclick="AppModule.openCategory('flash', 'عروض سريعة وتخفيضات')">
+          <div class="card-title-group">
+            <h4 class="card-title">عروض سريعة</h4>
+            <span class="card-subtitle">تخفيضات فلاش ⚡</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="28" fill="#FFF" fill-opacity="0.15"/>
+              <path d="M34 14L18 36H32L28 50L46 28H32L34 14Z" fill="#FACC15"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 9. Roblox & Gaming -->
+        <div class="category-card cat-roblox" onclick="AppModule.openCategory('roblox', 'روبلوكس والألعاب الإلكترونية')">
+          <div class="card-title-group">
+            <h4 class="card-title">روبلوكس</h4>
+            <span class="card-subtitle">روبوكس وألعاب 🎮</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <rect x="14" y="14" width="36" height="36" rx="8" transform="rotate(12 32 32)" fill="#BE123C" stroke="#ffffff" stroke-width="2"/>
+              <rect x="26" y="26" width="12" height="12" rx="3" transform="rotate(12 32 32)" fill="#ffffff"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 10. Netflix & Subscriptions -->
+        <div class="category-card cat-netflix" onclick="AppModule.openCategory('netflix', 'نيتفلكس واشتراكات الترفيه')">
+          <div class="card-title-group">
+            <h4 class="card-title">نيتفلكس</h4>
+            <span class="card-subtitle">اشتراكات الترفيه 🎬</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <path d="M22 14H28V50H22V14Z" fill="#E50914"/>
+              <path d="M36 14H42V50H36V14Z" fill="#E50914"/>
+              <path d="M22 14L42 50H36L22 24V14Z" fill="#B81D24"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 11. SHEIN & Shopping -->
+        <div class="category-card cat-shein" onclick="AppModule.openCategory('shein', 'شي إن والتسوق')">
+          <div class="card-title-group">
+            <h4 class="card-title">شي إن SHEIN</h4>
+            <span class="card-subtitle">قسائم التسوق 🛍️</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <path d="M22 20C22 14 26 10 32 10C38 10 42 14 42 20V24H22V20Z" stroke="#f43f5e" stroke-width="3" fill="none"/>
+              <path d="M14 24H50L47 54H17L14 24Z" stroke="#f43f5e" stroke-width="2.5" fill="rgba(244,63,94,0.2)"/>
+              <text x="32" y="44" font-size="8" font-weight="900" text-anchor="middle" fill="#ffffff" font-family="sans-serif">SHEIN</text>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 12. Noon -->
+        <div class="category-card cat-noon" onclick="AppModule.openCategory('noon', 'بطاقات نون')">
+          <div class="card-title-group">
+            <h4 class="card-title">نون Noon</h4>
+            <span class="card-subtitle">بطاقات وهدايا نون 🟡</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="24" stroke="#000000" stroke-width="5" fill="none"/>
+              <circle cx="32" cy="24" r="3.5" fill="#000000"/>
+              <circle cx="32" cy="32" r="14" stroke="#000000" stroke-width="3" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+
+        <!-- 13. Binance & Crypto Cards -->
+        <div class="category-card cat-binance" onclick="AppModule.openCategory('binance', 'بطاقات باينانس')">
+          <div class="card-title-group">
+            <h4 class="card-title">باينانس Binance</h4>
+            <span class="card-subtitle">USDT وكريبتو 🪙</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <svg class="brand-svg" viewBox="0 0 64 64" fill="none">
+              <rect x="32" y="14" width="12" height="12" rx="2" transform="rotate(45 32 14)" fill="#F0B90B"/>
+              <rect x="32" y="38" width="12" height="12" rx="2" transform="rotate(45 32 38)" fill="#F0B90B"/>
+              <rect x="20" y="26" width="12" height="12" rx="2" transform="rotate(45 20 26)" fill="#F0B90B"/>
+              <rect x="44" y="26" width="12" height="12" rx="2" transform="rotate(45 44 26)" fill="#F0B90B"/>
+            </svg>
+          </div>
+          <div class="card-arrow">◀</div>
+        </div>
+      </div>
+
+      <!-- =========================================================
+           DYNAMIC SPECIAL CATEGORIES (ACCOUNTS, CHANNELS & SERVICES)
+           ========================================================= -->
+      <section class="special-categories-section" id="specialCategoriesSection">
+        <div class="section-header" style="margin-top: 24px;">
+          <h3 class="section-title">
+            <span>شراء الحسابات والقنوات والخدمات الحصرية</span>
+            <span>💎</span>
+          </h3>
+          <span class="section-counter" id="specialCatCounter">تسليم فوري</span>
+        </div>
+        <div class="special-categories-grid" id="specialCategoriesGrid">
+          <!-- Dynamically populated from active categories -->
+        </div>
+      </section>
+
+      <!-- =========================================================
+           DYNAMIC ACCOUNT & APP TOP-UP SERVICES (شحن الحسابات والتطبيقات بالمعرف)
+           ========================================================= -->
+      <section class="special-categories-section topup-services-section" id="topupServicesSection">
+        <div class="section-header" style="margin-top: 24px;">
+          <h3 class="section-title">
+            <span>شحن الحسابات والتطبيقات بالمعرف (ID)</span>
+            <span>⚡</span>
+          </h3>
+          <span class="section-counter" id="topupServicesCounter">شحن فوري بالآيدي</span>
+        </div>
+        <div class="special-categories-grid topup-services-grid" id="topupServicesGrid">
+          <!-- Dynamically populated from active topup services -->
+        </div>
+      </section>
+    </main>
+
+    <!-- =========================================================
+         VIEW 2: SEARCH (بحث)
+         ========================================================= -->
+    <section id="tab-search" class="page-tab" style="display: none;">
+      <div class="section-header">
+        <h3 class="section-title">🔍 البحث السريع في المنتجات</h3>
+      </div>
+      <div style="position: relative; margin-bottom: 16px;">
+        <input 
+          type="text" 
+          id="globalSearchInput" 
+          placeholder="ابحث عن باينانس، ببجي، أبل، رايزر، زين، STC..." 
+          style="width: 100%; background: #141724; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 12px 42px 12px 16px; color: #fff; font-family: var(--font-ar); outline: none;"
+        />
+        <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 1.1rem; color: #94a3b8;">🔍</span>
+      </div>
+      <div id="searchResultsList"></div>
+    </section>
+
+    <!-- =========================================================
+         VIEW 3: CART & PURCHASE HISTORY (السلة وسجل المشتريات)
+         ========================================================= -->
+    <section id="tab-cart" class="page-tab" style="display: none;">
+      <div class="section-header">
+        <h3 class="section-title">🛒 سلة المشتريات</h3>
+        <button class="perks-btn" onclick="AppModule.clearCart()" style="background: rgba(239,68,68,0.2); color: #fca5a5;">إفراغ السلة</button>
+      </div>
+      <div id="cartItemsContainer"></div>
+      <div id="cartSummaryBox" style="display: none; background: #141724; border: 1px solid var(--border-gold); border-radius: 18px; padding: 16px; margin-top: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="color: #94a3b8; font-weight: 700;">المجموع بنجوم تيليجرام:</span>
+          <strong id="cartTotalStars" style="font-family: var(--font-en); font-size: 1.25rem; color: #facc15;">⭐ 0 Stars</strong>
+        </div>
+        <button class="btn-buy-package" style="width: 100%; justify-content: center; padding: 12px; font-size: 0.95rem;" onclick="AppModule.checkoutCart()">
+          <span>إتمام الدفع بنجوم تيليجرام (XTR)</span>
+        </button>
+      </div>
+
+      <!-- Orders / Codes Vault List (سجل المشتريات والخزنة الرقمية) -->
+      <div class="section-header" style="margin-top: 24px;">
+        <h4 style="font-size: 1rem; font-weight: 800; color: #fff;">📦 سجل المشتريات والبطاقات المفعلة</h4>
+      </div>
+      <div id="vaultList">
+        <!-- Injected via vault.js -->
+      </div>
+    </section>
+
+    <!-- =========================================================
+         VIEW 4: ACCOUNT (حسابي ومحفظة النجوم)
+         ========================================================= -->
+    <section id="tab-account" class="page-tab" style="display: none;">
+      <div class="section-header">
+        <h3 class="section-title">👤 حسابي ومحفظة النجوم</h3>
+        <span class="section-counter" style="color:#22c55e;">متصل بالتيليجرام ⚡</span>
+      </div>
+
+      <!-- Account Summary Card -->
+      <div class="account-summary-card">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="user-avatar-container" style="width: 56px; height: 56px;">
+              <img id="accountAvatarImg" class="user-avatar-img" src="" alt="Avatar" style="width:56px; height:56px; display:none;" />
+              <div id="accountAvatarBadge" style="width: 56px; height: 56px; border-radius: 16px; background: var(--gold-gradient); display: flex; align-items: center; justify-content: center; font-size: 28px;">👑</div>
+            </div>
+            <div>
+              <h4 id="accountName" style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 3px;">عضو VIP</h4>
+              <div id="accountTierText" style="font-size: 0.78rem; color: #fde047; font-weight: 700;">المستوى البرونزي 🥉</div>
+              <div id="accountUserIdText" style="font-size: 0.7rem; color: #94a3b8; margin-top: 2px;">ID: ...</div>
+            </div>
+          </div>
+          <div style="text-align: left;">
+            <span class="vip-status-pill" style="background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; font-weight: 700;">حساب موثق 🛡️</span>
+          </div>
+        </div>
+
+        <!-- Wallets & Balances Row -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <div style="background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 14px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.72rem; color: #cbd5e1; margin-bottom: 4px;">رصيد محفظتي (نجوم)</div>
+            <div style="font-size: 1.35rem; font-weight: 900; color: #fde047; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <span>⭐</span>
+              <span id="accountStarsBalance">0</span>
+            </div>
+          </div>
+          <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 14px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.72rem; color: #cbd5e1; margin-bottom: 4px;">نقاط الولاء والمكافآت</div>
+            <div style="font-size: 1.35rem; font-weight: 900; color: #38bdf8; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <span>🎁</span>
+              <span id="accountPointsBalance">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-buy-package" style="flex: 1; justify-content: center; font-size: 0.82rem;" onclick="AppModule.openLoyaltyModal()">🎁 مزايا المستويات</button>
+          <button class="btn-buy-package" style="flex: 1; justify-content: center; background: rgba(255,255,255,0.08); color: #fff; font-size: 0.82rem;" onclick="AppModule.shareReferral()">🤝 دعوة صديق (+50 ⭐)</button>
+        </div>
+      </div>
+
+      <!-- =========================================================
+           DIRECT STARS TOP-UP BOX (شحن رصيد الحساب المباشر بنجوم تيليجرام)
+           ========================================================= -->
+      <!-- =========================================================
+           DIRECT STARS TOP-UP BOX (شحن رصيد الحساب بنجوم تيليجرام - مدمج واحترافي)
+           ========================================================= -->
+      <div class="topup-box-card" style="background: linear-gradient(135deg, rgba(20, 24, 38, 0.95), rgba(30, 36, 56, 0.95)); border: 1px solid rgba(234, 179, 8, 0.35); border-radius: 18px; padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.3rem;">⚡</span>
+            <h4 style="font-size: 0.98rem; font-weight: 800; color: #fff; margin: 0;">شحن محفظة النجوم (Stars)</h4>
+          </div>
+          <span style="font-size: 0.68rem; background: rgba(234, 179, 8, 0.15); color: #fde047; padding: 3px 8px; border-radius: 12px; border: 1px solid rgba(234, 179, 8, 0.3); font-weight: 700;">فوري وآمن 🛡️</span>
+        </div>
+
+        <!-- Quick Amount Presets -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px;">
+          <button type="button" class="topup-chip-btn" onclick="AppModule.selectTopupAmount(50)">+50 ⭐</button>
+          <button type="button" class="topup-chip-btn" onclick="AppModule.selectTopupAmount(100)">+100 ⭐</button>
+          <button type="button" class="topup-chip-btn" onclick="AppModule.selectTopupAmount(250)">+250 ⭐</button>
+          <button type="button" class="topup-chip-btn" onclick="AppModule.selectTopupAmount(500)">+500 ⭐</button>
+          <button type="button" class="topup-chip-btn" onclick="AppModule.selectTopupAmount(1000)">+1,000 ⭐</button>
+          <button type="button" class="topup-chip-btn" onclick="AppModule.selectTopupAmount(2500)">+2,500 ⭐</button>
+        </div>
+
+        <!-- Compact Custom Input & Execute Row -->
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+          <div style="position: relative; flex: 1;">
+            <input 
+              type="number" 
+              id="inputCustomTopupStars" 
+              placeholder="كمية النجوم" 
+              min="1" 
+              max="50000"
+              style="width: 100%; background: #0c0e18; border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 12px; padding: 10px 36px 10px 10px; font-size: 0.95rem; color: #fff; font-family: var(--font-mono); outline: none; font-weight: 700;"
+            />
+            <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; pointer-events: none;">⭐</span>
+          </div>
+
+          <button 
+            id="btnExecuteStarsTopup" 
+            class="btn-buy-package" 
+            style="justify-content: center; padding: 10px 18px; font-size: 0.88rem; font-weight: 800; background: linear-gradient(135deg, #eab308, #ca8a04); color: #000; box-shadow: 0 4px 14px rgba(234, 179, 8, 0.35); border-radius: 12px; white-space: nowrap;" 
+            onclick="AppModule.submitStarsTopup()"
+          >
+            <span id="topupBtnText">⚡ شحن الفاتورة</span>
+          </button>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 0.68rem; color: #94a3b8;">
+          <span>🔒 دفع مشفر ورسمي عبر منصة Telegram Stars الرسمية</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- =========================================================
+       FLOATING SUPPORT ACTION BUTTON (FAB)
+       ========================================================= -->
+  <div class="chat-fab-btn" id="chatFabBtn" onclick="LiveChatModule.openChat()" title="الدعم الفني المباشر">
+    <div class="chat-fab-pulse"></div>
+    <span>💬</span>
+    <span class="chat-fab-online-dot"></span>
+    <span class="chat-fab-badge" id="chatFabBadge" style="display: none;">0</span>
+  </div>
+
+  <!-- =========================================================
+       5. NATIVE BOTTOM NAVIGATION BAR (RTL)
+       ========================================================= -->
+  <nav class="bottom-nav-bar" aria-label="شريط التنقل السفلي">
+    <button class="nav-tab-btn active" data-tab="home" onclick="AppModule.switchTab('home')">
+      <span class="tab-icon">🏠</span>
+      <span>الرئيسية</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="search" onclick="AppModule.switchTab('search')">
+      <span class="tab-icon">🔍</span>
+      <span>بحث</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="cart" onclick="AppModule.switchTab('cart')">
+      <span class="tab-icon">🛒</span>
+      <span>السلة</span>
+      <span class="cart-badge" id="cartBadgeCounter" style="display: none;">0</span>
+    </button>
+    <button class="nav-tab-btn" data-tab="account" onclick="AppModule.switchTab('account')">
+      <span class="tab-icon">👤</span>
+      <span>الحساب</span>
+    </button>
+  </nav>
+
+  <!-- =========================================================
+       LIVE SUPPORT CHAT MODAL SHEET
+       ========================================================= -->
+  <div class="modal-backdrop" id="liveSupportChatModal">
+    <div class="chat-sheet-container">
+      <div class="sheet-drag"></div>
+      <div class="chat-top-bar">
+        <div class="chat-support-profile">
+          <div class="chat-avatar">🎧</div>
+          <div>
+            <div style="font-weight: 800; color: #fff; font-size: 0.95rem;">الدعم الفني المباشر VIP</div>
+            <div style="font-size: 0.7rem; color: #22c55e; display: flex; align-items: center; gap: 4px;">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e; display: inline-block;"></span>
+              متصل الآن للمساعدة
+            </div>
+          </div>
+        </div>
+        <button class="sheet-close-btn" onclick="LiveChatModule.closeChat()">✕</button>
+      </div>
+
+      <!-- Messages Thread -->
+      <div class="chat-messages-scroll" id="chatMessagesThread">
+        <!-- Injected via chat.js -->
+      </div>
+
+      <!-- Chat Bottom Input Bar -->
+      <div class="chat-bottom-input-bar">
+        <select id="chatOrderRefSelect" style="display: none; background: #1c2132; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 4px 8px; font-size: 0.72rem; font-family: var(--font-ar); outline: none;">
+          <option value="">تحديد طلب للمساعدة (اختياري)</option>
+        </select>
+        <div class="chat-input-row">
+          <input 
+            type="text" 
+            id="chatInputText" 
+            class="chat-text-input" 
+            placeholder="اكتب رسالتك للدعم الفني..." 
+            autocomplete="off"
+          />
+          <button class="chat-send-btn" onclick="LiveChatModule.sendMessage()" title="إرسال الرسالة">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="#111" style="transform: rotate(180deg);"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       6. CATEGORY PACKAGES MODAL SHEET
+       ========================================================= -->
+  <div class="modal-backdrop" id="categoryPackagesModal">
+    <div class="sheet-container">
+      <div class="sheet-drag"></div>
+      <div class="sheet-header">
+        <div>
+          <h3 class="sheet-title" id="sheetCategoryTitle">باقات القسم</h3>
+          <p style="font-size: 0.75rem; color: #94a3b8;" id="sheetCategorySubtitle">اختر الباقة المناسبة للشحن الفوري</p>
+        </div>
+        <button class="sheet-close-btn" onclick="AppModule.closeCategoryModal()">✕</button>
+      </div>
+
+      <div class="sheet-content" id="categoryPackagesList">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       7. PRODUCT CHECKOUT / PLAYER ID MODAL SHEET
+       ========================================================= -->
+  <div class="modal-backdrop" id="productCheckoutModal">
+    <div class="sheet-container">
+      <div class="sheet-drag"></div>
+      <div class="sheet-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div id="checkoutBrandLogoWrap"></div>
+          <div>
+            <h3 class="sheet-title" id="checkoutProdTitle">تفاصيل الشراء</h3>
+            <div id="checkoutProdPrice" style="font-family: var(--font-en); font-weight: 900; color: #facc15; font-size: 1.1rem; margin-top: 2px;">55 Stars</div>
+          </div>
+        </div>
+        <button class="sheet-close-btn" onclick="AppModule.closeCheckoutModal()">✕</button>
+      </div>
+
+      <div class="sheet-content">
+        <p id="checkoutProdDesc" style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.45; margin-bottom: 14px;"></p>
+
+        <!-- Dynamic inputs for Player ID topups -->
+        <div id="checkoutDynamicInputs"></div>
+
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button class="btn-buy-package" style="flex: 2; justify-content: center; padding: 12px; font-size: 0.9rem;" id="btnDirectPay" onclick="AppModule.executeStarsPayment()">
+            <span>⭐ تأكيد ودفع بنجوم تيليجرام</span>
+          </button>
+          <button class="btn-buy-package" style="flex: 1; justify-content: center; background: rgba(255,255,255,0.08); color: #fff; padding: 12px;" onclick="AppModule.addToCartFromModal()">
+            <span>🛒 أضف للسلة</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       8. VIP LOYALTY & PERKS MODAL SHEET (عرض المزايا)
+       ========================================================= -->
+  <div class="modal-backdrop" id="loyaltyPerksModal">
+    <div class="sheet-container">
+      <div class="sheet-drag"></div>
+      <div class="sheet-header">
+        <div>
+          <h3 class="sheet-title">مزايا عضوية VIP الذهبية ⭐️</h3>
+          <p style="font-size: 0.75rem; color: #94a3b8;">مكافآت حصرية وخصومات خاصة</p>
+        </div>
+        <button class="sheet-close-btn" onclick="AppModule.closeLoyaltyModal()">✕</button>
+      </div>
+
+      <div class="sheet-content">
+        <div style="background: linear-gradient(135deg, rgba(234,179,8,0.15), rgba(202,138,4,0.05)); border: 1px solid rgba(234,179,8,0.3); border-radius: 16px; padding: 16px; margin-bottom: 14px;">
+          <h4 style="color: #fde047; font-size: 0.95rem; font-weight: 800; margin-bottom: 6px;">✨ مزايا مستواك الحالي:</h4>
+          <ul style="list-style: none; font-size: 0.8rem; color: #e2e8f0; line-height: 1.7;">
+            <li>✔️ بونص مضاعف 2x على جميع المشتريات بنجوم تيليجرام.</li>
+            <li>✔️ أولوية قصوى في معالجة طلبات شحن ببجي المباشرة.</li>
+            <li>✔️ خصم إضافي 5% على عروض الفلاش الأسبوعية.</li>
+          </ul>
+        </div>
+
+        <div style="background: #141724; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 16px;">
+          <h4 style="color: #fff; font-size: 0.95rem; font-weight: 800; margin-bottom: 6px;">🏆 الترقية للمستوى التيتانيوم:</h4>
+          <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.5; margin-bottom: 10px;">
+            اشترِ بقيمة 250 نجمة إضافية لفتح كاش باك فوري 10% وهدايا قسائم تسوق مجانية!
+          </p>
+          <button class="btn-buy-package" style="width: 100%; justify-content: center;" onclick="AppModule.closeLoyaltyModal()">
+            <span>تسوق الآن وارتقِ بالرتبة 🚀</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       9. SECURITY ACCOUNT BANNED OVERLAY
+       ========================================================= -->
+  <div class="banned-screen-overlay" id="bannedScreenOverlay" style="display: none;">
+    <div class="banned-card-box">
+      <div style="font-size: 48px; margin-bottom: 12px;">⛔</div>
+      <h3 style="color: #ef4444; font-size: 1.25rem; font-weight: 800; margin-bottom: 8px;">تم حظر حسابك من الاستخدام</h3>
+      <p style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; margin-bottom: 18px;">
+        تم تقييد وصول حسابك إلى تطبيق VIP Card App بناءً على إرشادات الأمان.
+      </p>
+      <button class="btn-buy-package" style="width: 100%; justify-content: center; background: rgba(255,255,255,0.1); color: #fff;" onclick="LiveChatModule.openTelegramDirect()">
+        <span>التواصل مع الإدارة عبر تيليجرام</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       10. IN-APP ANNOUNCEMENT POP-UP MODAL (تنبيه منبثق عند الفتح)
+       ========================================================= -->
+  <div class="modal-backdrop" id="inAppBroadcastModal" style="display: none; align-items: center; justify-content: center; z-index: 9999;">
+    <div style="background: #131722; border: 1px solid rgba(234, 179, 8, 0.4); box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 25px rgba(234, 179, 8, 0.15); border-radius: 24px; width: 92%; max-width: 420px; padding: 24px; text-align: center; position: relative; animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+      <button onclick="AppModule.closeBroadcastPopup()" style="position: absolute; left: 14px; top: 14px; background: rgba(255,255,255,0.08); border: none; color: #94a3b8; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center;">✕</button>
+      
+      <div id="bcModalIconWrap" style="font-size: 40px; margin-bottom: 10px;">📢</div>
+      <div id="bcModalImageContainer" style="display: none; margin-bottom: 14px;">
+        <img id="bcModalImg" src="" alt="Announcement" style="width: 100%; max-height: 180px; object-fit: cover; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1);" />
+      </div>
+
+      <h3 id="bcModalTitle" style="font-size: 1.15rem; font-weight: 800; color: #fde047; margin-bottom: 8px;"></h3>
+      <p id="bcModalMessage" style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6; margin-bottom: 20px; white-space: pre-line;"></p>
+
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <a id="bcModalActionBtn" href="#" target="_blank" class="btn-buy-package" style="display: none; flex: 1; justify-content: center; text-decoration: none; padding: 12px 18px; font-weight: 700;">
+          <span id="bcModalActionText">عرض التفاصيل</span>
+        </a>
+        <button class="btn-buy-package" style="flex: 1; justify-content: center; background: rgba(255,255,255,0.08); color: #fff; padding: 12px 18px;" onclick="AppModule.closeBroadcastPopup()">
+          <span>حسناً، فهمت 👍</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK & VIP Card App Config -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <!-- Scripts -->
+  <script src="js/brand-assets.js?v=1.3.5"></script>
+  <script src="js/catalog-data.js?v=1.3.5"></script>
+  <script src="js/telegram-mock.js"></script>
+  <script src="js/vault.js?v=1.3.5"></script>
+  <script src="js/chat.js?v=1.3.5"></script>
+  <script src="js/currency.js?v=1.3.5"></script>
+  <script src="js/app.js?v=1.3.5"></script>
+</body>
+</html>

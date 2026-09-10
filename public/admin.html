@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VIP Card App - لوحة التحكم والإدارة المتقدمة</title>
+  <link rel="stylesheet" href="css/admin.css?v=1.3.5" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>" />
+  <!-- Master Catalog Preload -->
+  <script src="js/brand-assets.js?v=1.3.5"></script>
+  <script src="js/catalog-data.js?v=1.3.5"></script>
+</head>
+<body>
+
+  <div class="admin-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="brand-icon">👑</div>
+          <div class="brand-title">
+            VIP Card App
+            <span class="brand-badge">ADMIN</span>
+          </div>
+        </div>
+        <a href="/" target="_blank" class="admin-btn secondary sm" style="padding: 4px 10px; font-size: 0.74rem;">🛍️ المتجر</a>
+      </div>
+
+      <ul class="nav-links">
+        <li class="admin-nav-item active" data-tab="orders">
+          <span>⚡ طلبات الشحن المباشر</span>
+          <span id="badgePendingCount" class="badge" style="display:none;">0</span>
+        </li>
+        <li class="admin-nav-item" data-tab="chat">
+          <span>💬 المحادثات والدعم الفني</span>
+          <span id="badgeChatUnread" class="badge" style="display:none; background:#ef4444;">0</span>
+        </li>
+        <li class="admin-nav-item" data-tab="categories">
+          <span>🏷️ إدارة وتفعيل الأقسام</span>
+        </li>
+        <li class="admin-nav-item" data-tab="products">
+          <span>💳 إدارة البطاقات الرقمية</span>
+        </li>
+        <li class="admin-nav-item" data-tab="accounts">
+          <span>👤 إدارة الحسابات والقنوات</span>
+        </li>
+        <li class="admin-nav-item" data-tab="topups">
+          <span>⚡ شحن الحسابات والتطبيقات</span>
+        </li>
+        <li class="admin-nav-item" data-tab="users">
+          <span>👥 المستخدمين ونظام الحظر</span>
+        </li>
+        <li class="admin-nav-item" data-tab="broadcast">
+          <span>📢 الإذاعة والإعلانات</span>
+        </li>
+        <li class="admin-nav-item" data-tab="telegram-settings">
+          <span>⚙️ إعدادات التلجرام والأمان</span>
+        </li>
+        <li class="admin-nav-item" data-tab="ledger">
+          <span>📜 سجل العمليات والدفتر</span>
+        </li>
+        <li class="admin-nav-item" style="color: #ef4444; margin-top: 8px; cursor: pointer;" onclick="AdminApp.logout()">
+          <span>🚪 تسجيل الخروج</span>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer" style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--admin-border); font-size: 0.78rem; color: var(--admin-text-sub);">
+        <div>قاعدة البيانات: <strong style="color:var(--admin-gold);">Cloud Firestore سحابية</strong></div>
+        <div style="margin-top: 4px;">العملة: <strong style="color:#38bdf8;">Telegram Stars (XTR)</strong></div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="admin-main">
+      <header class="admin-header">
+        <div class="header-title">
+          <h2>مركز العمليات والإدارة الميدانية</h2>
+          <p>إدارة طلبات الشحن، شات الدعم، إعدادات تيليجرام، الإذاعة، والتعبئة التلقائية للمخزون.</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <a href="/" target="_blank" class="admin-btn secondary">🛍️ معاينة المتجر</a>
+        </div>
+      </header>
+
+      <!-- KPI Summary Cards -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon red">⏳</div>
+          <div class="stat-info">
+            <div class="num" id="statPendingOrders">0</div>
+            <div class="lbl">طلبات شحن معلقة</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon green">📦</div>
+          <div class="stat-info">
+            <div class="num" id="statTotalStock">0</div>
+            <div class="lbl">أكواد جاهزة بالمخزن</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon gold">🛍️</div>
+          <div class="stat-info">
+            <div class="num" id="statTotalProducts">0</div>
+            <div class="lbl">إجمالي المنتجات</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon blue">👥</div>
+          <div class="stat-info">
+            <div class="num" id="statTotalUsers">0</div>
+            <div class="lbl">مستخدمين مسجلين</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 1: DIRECT TOP-UP & ORDERS QUEUE -->
+      <section id="tab-orders" class="tab-section">
+        <div class="admin-card-section">
+          <div class="section-top">
+            <h3>⚡ طابور شحن الآيدي المباشر</h3>
+            <button class="admin-btn secondary sm" onclick="AdminApp.switchTab('orders')">🔄 تحديث الطابور</button>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>رقم الطلب</th>
+                  <th>الخدمة / الباقة</th>
+                  <th>معرف اللاعب (ID) / الجوال</th>
+                  <th>العميل</th>
+                  <th>الحالة</th>
+                  <th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: LIVE SUPPORT CHAT HUB -->
+      <section id="tab-chat" class="tab-section" style="display: none;">
+        <div class="admin-card-section">
+          <div class="section-top">
+            <div>
+              <h3>💬 مركز المحادثات المباشرة مع العملاء (Live Chat)</h3>
+              <p style="font-size:0.75rem; color:var(--admin-text-sub); margin-top:2px;">محادثات فورية مباشرة متصلة مع سحابة Firestore ومزامنة مع التيليجرام.</p>
+            </div>
+            <button class="admin-btn secondary sm" onclick="AdminApp.switchTab('chat')">🔄 تحديث المحادثات</button>
+          </div>
+
+          <div class="admin-chat-grid-wrapper" style="display: grid; grid-template-columns: 280px 1fr; gap: 16px; min-height: 480px; background: rgba(0,0,0,0.25); border-radius: 16px; border: 1px solid var(--admin-border); overflow: hidden;">
+            <!-- Threads List -->
+            <div style="border-left: 1px solid var(--admin-border); background: #11141d; overflow-y: auto; max-height: 520px;" id="adminChatThreadsList"></div>
+            
+            <!-- Conversation Pane -->
+            <div id="adminChatConversationPane" style="display: flex; flex-direction: column; height: 520px;">
+              <div style="padding: 10px 14px; background: #161a25; border-bottom: 1px solid var(--admin-border); display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-weight: 700; color: #fff; font-size: 0.88rem;" id="adminChatActiveUserTitle">
+                  اختر محادثة من القائمة للرد
+                </div>
+                <button id="adminChatBackBtn" class="admin-btn secondary sm" style="display: none; padding: 4px 10px; font-size: 0.72rem;" onclick="AdminApp.closeMobileChat()">
+                  <span>◀ القائمة</span>
+                </button>
+              </div>
+              <div style="flex: 1; padding: 16px; overflow-y: auto;" id="adminChatMessagesBody">
+                <div style="text-align: center; padding: 40px; color: var(--admin-text-sub);">
+                  اختر محادثة عميل لبدء الرد المباشر.
+                </div>
+              </div>
+              <div style="padding: 12px; background: #161a25; border-top: 1px solid var(--admin-border); display: flex; gap: 8px;">
+                <input 
+                  type="text" 
+                  id="adminChatReplyInput" 
+                  class="admin-btn secondary" 
+                  style="flex: 1; text-align: right; cursor: text; padding: 10px 14px; font-size: 0.88rem;" 
+                  placeholder="اكتب رد الدعم الفني هنا..." 
+                  onkeypress="if(event.key==='Enter') AdminApp.sendAdminReply()"
+                />
+                <button class="admin-btn" onclick="AdminApp.sendAdminReply()">
+                  <span>إرسال الرد ✈️</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB: CATEGORIES HUB (إدارة وتفعيل الأقسام المخصصة) -->
+      <section id="tab-categories" class="tab-section" style="display: none;">
+        <div class="admin-card-section">
+          <div class="section-top" style="flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h3>🏷️ إدارة وتفعيل أقسام المتجر (Categories Hub)</h3>
+              <p style="font-size:0.78rem; color:var(--admin-text-sub); margin-top:2px;">
+                تحكم في تفعيل أو إخفاء أقسام الحسابات والقنوات والبطاقات، أو أضف أقساماً جديدة فورياً لتظهر لزبائنك بالمتجر.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="admin-btn" onclick="AdminApp.toggleAddCategoryForm()">➕ إضافة قسم جديد</button>
+              <button class="admin-btn secondary sm" onclick="AdminApp.loadCategories()">🔄 تحديث</button>
+            </div>
+          </div>
+
+          <!-- Add Category Collapsible Form -->
+          <div id="addCategoryFormBox" style="display: none; background: #11141d; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 16px; padding: 18px; margin-bottom: 20px;">
+            <h4 style="font-size: 0.95rem; color: #fde047; margin-bottom: 12px;">✨ إضافة قسم جديد للمتجر</h4>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 14px;">
+              <div>
+                <label style="font-size: 0.76rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">اسم القسم بالعربي *</label>
+                <input type="text" id="newCatTitleInput" class="admin-btn secondary" style="width: 100%; text-align: right; cursor: text; padding: 10px;" placeholder="مثال: شراء حسابات تيك توك" />
+              </div>
+              <div>
+                <label style="font-size: 0.76rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">المعرف الإنجليزي (ID/Slug) *</label>
+                <input type="text" id="newCatSlugInput" class="admin-btn secondary" style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 10px;" placeholder="مثال: tiktok_accounts" />
+              </div>
+              <div>
+                <label style="font-size: 0.76rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">الأيقونة (إيموجي) *</label>
+                <input type="text" id="newCatIconInput" class="admin-btn secondary" style="width: 100%; text-align: center; cursor: text; padding: 10px;" placeholder="🎵 أو 📱" value="🏷️" />
+              </div>
+              <div>
+                <label style="font-size: 0.76rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">شارة مميزة (اختياري)</label>
+                <input type="text" id="newCatBadgeInput" class="admin-btn secondary" style="width: 100%; text-align: right; cursor: text; padding: 10px;" placeholder="مثال: موثق ونشط" />
+              </div>
+            </div>
+            <div style="margin-bottom: 14px;">
+              <label style="font-size: 0.76rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">وصف مختصر للقسم</label>
+              <input type="text" id="newCatDescInput" class="admin-btn secondary" style="width: 100%; text-align: right; cursor: text; padding: 10px;" placeholder="مثال: حسابات تيك توك بيتا مفعلة وجاهزة للربح فورياً" />
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="admin-btn" onclick="AdminApp.submitNewCategory()">💾 حفظ وتفعيل القسم بالمتجر</button>
+              <button class="admin-btn secondary" onclick="AdminApp.toggleAddCategoryForm()">إلغاء</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Categories Grid -->
+          <div class="category-mgmt-grid" id="categoriesAdminGrid">
+            <!-- Rendered by AdminApp.renderCategoriesGrid() -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PRODUCT CATALOG & AUTO-STOCKING -->
+      <section id="tab-products" class="tab-section" style="display: none;">
+        <div class="admin-card-section">
+          <!-- Distinct Product Mode Switcher: Cards vs Accounts vs Topups -->
+          <div style="display: flex; gap: 10px; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; flex-wrap: wrap;">
+            <button id="btnProductSubTabCards" class="admin-btn active-subtab" style="padding: 10px 18px; font-weight: 800; font-size: 0.88rem; background: linear-gradient(135deg, #f59e0b, #d97706); color: #111;" onclick="AdminApp.switchProductMode('cards')">
+              💳 قسم البطاقات الرقمية (<span id="countCardsOnly">0</span>)
+            </button>
+            <button id="btnProductSubTabAccounts" class="admin-btn secondary" style="padding: 10px 18px; font-weight: 800; font-size: 0.88rem; background: rgba(255,255,255,0.06); color: #fff;" onclick="AdminApp.switchProductMode('accounts')">
+              👤 قسم بيع الحسابات والقنوات (<span id="countAccountsOnly">0</span>)
+            </button>
+            <button id="btnProductSubTabTopups" class="admin-btn secondary" style="padding: 10px 18px; font-weight: 800; font-size: 0.88rem; background: rgba(255,255,255,0.06); color: #fff;" onclick="AdminApp.switchProductMode('topups')">
+              ⚡ قسم شحن الحسابات والتطبيقات (<span id="countTopupsOnly">0</span>)
+            </button>
+          </div>
+
+          <div class="section-top" style="flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h3 id="productSectionHeaderTitle">💳 إدارة البطاقات الرقمية والشحن</h3>
+              <p id="productSectionHeaderDesc" style="font-size:0.75rem; color:var(--admin-text-sub); margin-top:2px;">
+                تحكم شامل: عدّل أسعار بطاقات الشحن والهدايا، الأكواد، وتطبيق الخصومات بشكل مستقل.
+              </p>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <button id="btnAddProductMainBtn" class="admin-btn" onclick="AdminApp.openAddProductModal()">
+                <span>➕ إضافة بطاقة جديدة</span>
+              </button>
+              <button class="admin-btn secondary sm" onclick="AdminApp.switchTab('products')">
+                <span>🔄 تحديث</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter & Search Toolbar -->
+          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; background:rgba(0,0,0,0.25); padding:12px 14px; border-radius:12px; border:1px solid var(--admin-border); align-items:center; justify-content:space-between;">
+            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; flex:1;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:0.78rem; color:var(--admin-text-sub); font-weight:700;">تصفية بالقسم:</label>
+                <select id="adminProductCategoryFilter" class="admin-btn secondary" style="padding:7px 12px; font-size:0.82rem; cursor:pointer;" onchange="AdminApp.filterProductsByCategory()">
+                  <option value="all">🌐 كل الأقسام (All Categories)</option>
+                  <option value="pubg">🎮 ببجي موبايل (PUBG UC)</option>
+                  <option value="apple">🍏 بطاقات أبل (Apple / iTunes)</option>
+                  <option value="google">🤖 جوجل بلاي (Google Play)</option>
+                  <option value="telecom">📶 الاتصالات (STC وزين)</option>
+                  <option value="likecard">💳 محافظ لايك كارد</option>
+                  <option value="razer">🟡 رايزر جولد (Razer Gold)</option>
+                  <option value="binance">💎 باينانس USDT</option>
+                  <option value="visa">💳 فيزا مسبقة الدفع</option>
+                  <option value="roblox">🕹️ روبلوكس (Roblox)</option>
+                  <option value="netflix">🎬 نيتفلكس (Netflix)</option>
+                  <option value="shein">🛍️ شي إن (SHEIN)</option>
+                  <option value="noon">🟡 نون (Noon)</option>
+                  <option value="pubg_accounts">🎮 شراء حسابات بوبجي</option>
+                  <option value="twitter_accounts">🐦 شراء حسابات تويتر</option>
+                  <option value="telegram_channels">📢 شراء قنوات تلجرام</option>
+                  <option value="onlyfans_accounts">💎 شراء حسابات اونلي فانز</option>
+                  <option value="fanspicy_accounts">🌶️ شراء حسابات فان سبايسي</option>
+                  <option value="tg_premium">⭐ تليجرام بريميوم</option>
+                  <option value="tiktok_coins">🎵 عملات تيك توك</option>
+                  <option value="bigo_live">💎 بيجو لايف</option>
+                  <option value="likee">❤️ لايكي لايف</option>
+                </select>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:6px; flex:1; max-width:280px;">
+                <input 
+                  type="text" 
+                  id="adminProductSearchInput" 
+                  class="admin-btn secondary" 
+                  style="width:100%; text-align:right; padding:7px 12px; font-size:0.82rem; cursor:text;" 
+                  placeholder="🔍 بحث باسم المنتج أو المعرف..." 
+                  oninput="AdminApp.filterProductsByCategory()"
+                />
+              </div>
+            </div>
+
+            <div id="adminProductCountBadge" style="font-size:0.75rem; color:#fde047; font-weight:700;">
+              جاري تحميل المنتجات...
+            </div>
+          </div>
+
+          <!-- Quick Discount & Pricing Engine Toolbar -->
+          <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:14px; background:linear-gradient(135deg, rgba(245,158,11,0.08), rgba(16,185,129,0.08)); border:1px solid rgba(245,158,11,0.25); border-radius:12px; padding:12px 16px; align-items:center; justify-content:space-between;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+              <span style="font-weight:700; color:#fde047; font-size:0.82rem;">⚡ تحكم سريع بالخصومات والأسعار:</span>
+              <span style="font-size:0.75rem; color:var(--admin-text-sub);">تطبيق خصم موحد على القسم المختار:</span>
+              <div style="display:inline-flex; gap:6px;">
+                <button type="button" class="admin-btn sm" style="padding:4px 9px; font-size:0.72rem; background:rgba(239,68,68,0.2); border:1px solid #ef4444; color:#fca5a5;" onclick="AdminApp.applyBulkCategoryDiscount(10)">خصم 10% للقسم</button>
+                <button type="button" class="admin-btn sm" style="padding:4px 9px; font-size:0.72rem; background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fde047;" onclick="AdminApp.applyBulkCategoryDiscount(15)">خصم 15% للقسم</button>
+                <button type="button" class="admin-btn sm" style="padding:4px 9px; font-size:0.72rem; background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#6ee7b7;" onclick="AdminApp.applyBulkCategoryDiscount(20)">خصم 20% للقسم</button>
+                <button type="button" class="admin-btn sm" style="padding:4px 9px; font-size:0.72rem; background:rgba(168,85,247,0.2); border:1px solid #a855f7; color:#d8b4fe;" onclick="AdminApp.applyBulkCategoryDiscount(25)">خصم 25% للقسم</button>
+              </div>
+            </div>
+            <div style="font-size:0.75rem; color:var(--admin-text-sub); display:flex; align-items:center; gap:6px;">
+              <span>💡 يمكنك تعديل سعر أي حساب أو بطاقة فورياً بكتابة السعر والضغط على زر 💾 حفظ</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>العنوان / المعرف</th>
+                  <th>القسم</th>
+                  <th>السعر (نجوم)</th>
+                  <th>نوع التسليم</th>
+                  <th>المخزون المتوفر</th>
+                  <th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="productsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: USER MANAGEMENT & BAN SYSTEM -->
+      <section id="tab-users" class="tab-section" style="display: none;">
+        <div class="admin-card-section">
+          <div class="section-top">
+            <div>
+              <h3>👥 إدارة المستخدمين ونظام الحظر (User Retention & Ban)</h3>
+              <p style="font-size:0.75rem; color:var(--admin-text-sub); margin-top:2px;">
+                يتم حفظ كل زائر للبوت أو التطبيق تلقائياً مع تاريخ الانضمام وعدد طلباته.
+              </p>
+            </div>
+            <button class="admin-btn secondary sm" onclick="AdminApp.switchTab('users')">🔄 تحديث المستخدمين</button>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>المستخدم (ID / الاسم)</th>
+                  <th>تاريخ الانضمام</th>
+                  <th>إجمالي الطلبات</th>
+                  <th>الإنفاق بالنجوم</th>
+                  <th>حالة الحساب</th>
+                  <th>إجراء الحظر</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: BROADCASTING & NOTIFICATIONS (الإذاعة والإعلانات) -->
+      <section id="tab-broadcast" class="tab-section" style="display: none;">
+        <div class="admin-card-section">
+          <div class="section-top">
+            <div>
+              <h3>📢 نظام الإذاعة والإعلانات (Broadcast & Notifications)</h3>
+              <p style="font-size:0.75rem; color:var(--admin-text-sub); margin-top:2px;">
+                إرسال رسالة إعلانية بالبوت لجميع المستخدمين المسجلين وتفعيل إعلان بداخل الـ Mini App فورياً.
+              </p>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px;">
+            <!-- Broadcast Composer Form -->
+            <div style="background: #11141d; border: 1px solid var(--admin-border); border-radius: 16px; padding: 18px;">
+              <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 12px;">✍️ كتابة الإذاعة الجماعية</h4>
+              
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                  <label style="font-size: 0.78rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">عنوان الإعلان *</label>
+                  <input id="bcTitle" type="text" class="admin-btn secondary" style="width: 100%; text-align: right; cursor: text; padding: 10px;" placeholder="مثال: خصم 50% على شدات ببجي لفترة محدودة! 🔥" />
+                </div>
+                <div>
+                  <label style="font-size: 0.78rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">نص الرسالة الإعلانية *</label>
+                  <textarea id="bcMessage" class="admin-btn secondary" style="width: 100%; text-align: right; cursor: text; padding: 10px; height: 90px;" placeholder="اكتب تفاصيل العرض أو التنبيه هنا..."></textarea>
+                </div>
+                <div>
+                  <label style="font-size: 0.78rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">رابط الصورة (اختياري)</label>
+                  <input id="bcImageUrl" type="url" class="admin-btn secondary" style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 8px 10px;" placeholder="https://example.com/banner.jpg" />
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                  <div>
+                    <label style="font-size: 0.78rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">نص الزر (اختياري)</label>
+                    <input id="bcBtnText" type="text" class="admin-btn secondary" style="width: 100%; text-align: right; cursor: text; padding: 8px 10px;" placeholder="مثال: تسوق الآن 🛍️" />
+                  </div>
+                  <div>
+                    <label style="font-size: 0.78rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">رابط الزر (اختياري)</label>
+                    <input id="bcBtnUrl" type="url" class="admin-btn secondary" style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 8px 10px;" placeholder="https://t.me/..." />
+                  </div>
+                </div>
+                <div>
+                  <label style="font-size: 0.78rem; color: var(--admin-text-sub); display: block; margin-bottom: 4px;">طريقة الظهور في الـ Mini App</label>
+                  <select id="bcDisplayMode" class="admin-btn secondary" style="width: 100%; text-align: right; cursor: pointer; padding: 10px;">
+                    <option value="both" selected>🌟 كلاهما (شريط إعلاني علوي + نافذة منبثقة Pop-up عند الفتح)</option>
+                    <option value="popup">⚡ نافذة منبثقة فقط (Pop-up تنبيهي فور فتح التطبيق)</option>
+                    <option value="banner">📌 شريط إعلاني علوي فقط (In-App Banner)</option>
+                  </select>
+                </div>
+                <div style="margin-top: 10px;">
+                  <button class="admin-btn" style="width: 100%; justify-content: center; padding: 12px;" onclick="AdminApp.sendBroadcast()">
+                    <span>🚀 إرسال الإذاعة للجميع (Send Broadcast)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Active Announcement Preview -->
+            <div style="background: #11141d; border: 1px solid var(--admin-border); border-radius: 16px; padding: 18px;">
+              <h4 style="font-size: 0.95rem; color: #fff; margin-bottom: 12px;">📱 الإعلان النشط حالياً بداخل التطبيق</h4>
+              <div id="activeBroadcastPreviewContainer" style="color: var(--admin-text-sub); font-size: 0.85rem;">
+                جاري فحص الإعلانات النشطة...
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: TELEGRAM HUB SETTINGS (إعدادات التلجرام) -->
+      <section id="tab-telegram-settings" class="tab-section" style="display: none;">
+        <div class="admin-card-section">
+          <div class="section-top">
+            <div>
+              <h3>⚙️ إعدادات التلجرام وحسابات الاستقبال (Telegram Hub Settings)</h3>
+              <p style="font-size:0.75rem; color:var(--admin-text-sub); margin-top:2px;">
+                يمكنك تعديل توكن البوت وقنوات الاستقبال وحفظها في قاعدة البيانات فورياً دون إعادة تشغيل السيرفر.
+              </p>
+            </div>
+          </div>
+
+          <div style="max-width: 650px; background: #11141d; border: 1px solid var(--admin-border); border-radius: 18px; padding: 22px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              
+              <!-- 1. Bot Token -->
+              <div>
+                <label style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: #fff; margin-bottom: 6px;">
+                  <span>🤖 بوت استقبال النجوم (Telegram Stars Payment Collector Bot Token)</span>
+                  <span style="color: var(--admin-gold); font-size: 0.75rem;">من @BotFather</span>
+                </label>
+                <input 
+                  id="tgBotTokenInput" 
+                  type="password" 
+                  class="admin-btn secondary" 
+                  style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 12px; font-family: var(--admin-mono);" 
+                  placeholder="1234567890:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                />
+                <span style="font-size: 0.72rem; color: var(--admin-text-sub); margin-top: 4px; display: block;">
+                  البوت المسؤول عن إصدار فواتير نجوم تيليجرام واستقبال عمليات الدفع الآلي.
+                </span>
+              </div>
+
+              <!-- 2. Admin Orders Channel -->
+              <div>
+                <label style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: #fff; margin-bottom: 6px;">
+                  <span>⚡ قناة استقبال الطلبات (Admin Orders Channel ID)</span>
+                  <span style="color: #38bdf8; font-size: 0.75rem;">مثال: -1001234567890</span>
+                </label>
+                <input 
+                  id="tgOrdersChannelInput" 
+                  type="text" 
+                  class="admin-btn secondary" 
+                  style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 12px; font-family: var(--admin-mono);" 
+                  placeholder="-100..."
+                />
+                <span style="font-size: 0.72rem; color: var(--admin-text-sub); margin-top: 4px; display: block;">
+                  القناة التي يصلها تنبيه فوري وأزرار التنفيذ لكل طلب شحن آيدي جديد.
+                </span>
+              </div>
+
+              <!-- 3. Storage Channel -->
+              <div>
+                <label style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: #fff; margin-bottom: 6px;">
+                  <span>📜 قناة التخزين والأرشيف (Backup / Storage Channel ID)</span>
+                  <span style="color: #10b981; font-size: 0.75rem;">دفتر البيانات</span>
+                </label>
+                <input 
+                  id="tgStorageChannelInput" 
+                  type="text" 
+                  class="admin-btn secondary" 
+                  style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 12px; font-family: var(--admin-mono);" 
+                  placeholder="-100..."
+                />
+                <span style="font-size: 0.72rem; color: var(--admin-text-sub); margin-top: 4px; display: block;">
+                  القناة الخاصة بتخزين السجلات، الأكواد المصروفة، والنسخ الاحتياطي اللامركزي.
+                </span>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                <button class="admin-btn" style="padding: 12px 24px; font-size: 0.95rem;" onclick="AdminApp.saveTelegramSettings()">
+                  <span>💾 حفظ وتطبيق الإعدادات الفوري</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Security & Password Change Card -->
+        <div class="admin-card-section" style="margin-top: 20px;">
+          <div class="section-top">
+            <div>
+              <h3>🔒 أمان اللوحة وتغيير المفتاح السري (Admin Security)</h3>
+              <p style="font-size:0.78rem; color:var(--admin-text-sub); margin-top:2px;">
+                تغيير كلمة المرور الخاصة بلوحة التحكم. عند تعيين كلمة مرور جديدة سيتم <strong>حظر المفتاح الافتراضي (vipadmin2026) نهائياً</strong> ومنع الدخول به.
+              </p>
+            </div>
+            <span id="adminKeyStatusBadge" class="status-pill pending">المفتاح الافتراضي</span>
+          </div>
+
+          <div style="max-width: 650px; background: #11141d; border: 1px solid var(--admin-border); border-radius: 18px; padding: 22px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label style="display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: 700; color: #fff; margin-bottom: 6px;">
+                  <span>🔑 المفتاح السري الجديد (New Secret Key) *</span>
+                  <span style="color: var(--admin-gold); font-size: 0.72rem;">4 خانات على الأقل</span>
+                </label>
+                <input 
+                  id="newAdminSecretKeyInput" 
+                  type="password" 
+                  class="admin-btn secondary" 
+                  style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 12px; font-family: var(--admin-mono); font-size: 0.95rem;" 
+                  placeholder="أدخل المفتاح السري الجديد" 
+                />
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #fff; margin-bottom: 6px;">
+                  تأكيد المفتاح السري الجديد (Confirm New Key) *
+                </label>
+                <input 
+                  id="confirmAdminSecretKeyInput" 
+                  type="password" 
+                  class="admin-btn secondary" 
+                  style="width: 100%; text-align: left; direction: ltr; cursor: text; padding: 12px; font-family: var(--admin-mono); font-size: 0.95rem;" 
+                  placeholder="أعد إدخال المفتاح للتأكيد" 
+                />
+              </div>
+
+              <div id="changePasswordAlert" style="display: none; padding: 10px 14px; border-radius: 10px; font-size: 0.82rem; font-weight: 600; line-height: 1.5;"></div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px;">
+                <button class="admin-btn success" style="padding: 12px 24px; font-size: 0.95rem;" onclick="AdminApp.changeAdminPassword()">
+                  <span>🔐 حفظ وتفعيل المفتاح وحظر الافتراضي</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 7: TELEGRAM CHANNEL LEDGER -->
+      <section id="tab-ledger" class="tab-section" style="display: none;">
+        <div class="admin-card-section">
+          <div class="section-top">
+            <h3>📜 دفتر قناة تيليجرام الخاصة (Real-time DB Ledger)</h3>
+            <button class="admin-btn secondary sm" onclick="AdminApp.switchTab('ledger')">🔄 تحديث الدفتر</button>
+          </div>
+          <div id="ledgerLogContainer" style="max-height: 520px; overflow-y: auto;"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: EDIT PRODUCT FORM (تعديل اسم المنتج، المعرف والسعر) -->
+  <!-- MODAL: EDIT & ADD PRODUCT FORM (تعديل شامل أو إضافة منتج جديد) -->
+  <div class="admin-modal-overlay" id="editProductModal">
+    <div class="admin-modal-content" style="max-width: 560px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 id="editProductModalTitle" style="font-size:1.15rem; font-weight:700; color:#fff;">✏️ تعديل بيانات المنتج</h3>
+        <button class="admin-btn secondary sm" onclick="AdminApp.closeEditProductModal()">✕</button>
+      </div>
+      
+      <input type="hidden" id="editProductOriginalId" />
+
+      <div style="display:flex; flex-direction:column; gap:13px; max-height:75vh; overflow-y:auto; padding-left:4px; padding-right:4px;">
+        <!-- 1. Product Title -->
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:700; color:#fff; margin-bottom:4px;">
+            <span>اسم المنتج (Product Title) *</span>
+          </label>
+          <input 
+            id="editProductTitle" 
+            type="text" 
+            class="admin-btn secondary" 
+            style="width:100%; text-align:right; cursor:text; padding:10px 14px; font-size:0.92rem; font-weight:600;" 
+            placeholder="مثال: بطاقة أبل 50$ - المتجر الأمريكي 🇺🇸" 
+          />
+          <span style="font-size:0.72rem; color:var(--admin-text-sub); margin-top:3px; display:block;">
+            الاسم الظاهر للزبائن في المتجر وشاشات الشراء.
+          </span>
+        </div>
+
+        <!-- 2. Product ID / Slug & Category in 2-cols -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:700; color:#fff; margin-bottom:4px;">
+              <span>المعرف الفريد (Slug / ID) *</span>
+            </label>
+            <input 
+              id="editProductSlug" 
+              type="text" 
+              class="admin-btn secondary" 
+              style="width:100%; text-align:left; direction:ltr; cursor:text; padding:10px 12px; font-family:var(--admin-mono); font-size:0.84rem;" 
+              placeholder="apple-us-50" 
+            />
+          </div>
+
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:700; color:#fff; margin-bottom:4px;">
+              <span>القسم (Category) *</span>
+            </label>
+            <select 
+              id="editProductCategory" 
+              class="admin-btn secondary" 
+              style="width:100%; padding:10px 12px; font-size:0.84rem; cursor:pointer;"
+            >
+              <option value="apple">🍏 بطاقات أبل (apple)</option>
+              <option value="google">🤖 جوجل بلاي (google)</option>
+              <option value="pubg">🎮 شدات ببجي (pubg)</option>
+              <option value="telecom">📶 الاتصالات (telecom)</option>
+              <option value="likecard">💳 محافظ لايك كارد (likecard)</option>
+              <option value="razer">🟡 رايزر جولد (razer)</option>
+              <option value="binance">💎 باينانس USDT (binance)</option>
+              <option value="visa">💳 فيزا كارد (visa)</option>
+              <option value="roblox">🕹️ روبلوكس (roblox)</option>
+              <option value="netflix">🎬 نيتفلكس (netflix)</option>
+              <option value="shein">🛍️ شي إن (shein)</option>
+              <option value="noon">🟡 نون (noon)</option>
+              <option value="pubg_accounts">🎮 شراء حسابات بوبجي (pubg_accounts)</option>
+              <option value="twitter_accounts">🐦 شراء حسابات تويتر (twitter_accounts)</option>
+              <option value="telegram_channels">📢 شراء قنوات تلجرام (telegram_channels)</option>
+              <option value="onlyfans_accounts">💎 شراء حسابات اونلي فانز (onlyfans_accounts)</option>
+              <option value="fanspicy_accounts">🌶️ شراء حسابات فان سبايسي (fanspicy_accounts)</option>
+              <option value="tg_premium">⭐ تليجرام بريميوم (tg_premium)</option>
+              <option value="tiktok_coins">🎵 عملات تيك توك (tiktok_coins)</option>
+              <option value="bigo_live">💎 بيجو لايف (bigo_live)</option>
+              <option value="likee">❤️ لايكي لايف (likee)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 3. Price (Stars & USD) & Delivery Type in 2-cols -->
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:10px;">
+          <div>
+            <label style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:700; color:#fff; margin-bottom:4px;">
+              <span>السعر بالنجوم أو الدولار *</span>
+              <span style="color:var(--admin-gold); font-size:0.75rem;">⭐ XTR / 💵 USD</span>
+            </label>
+            <div style="display:flex; gap:6px;">
+              <input 
+                id="editProductPrice" 
+                type="number" 
+                min="1" 
+                class="admin-btn secondary" 
+                style="flex:1; text-align:left; direction:ltr; cursor:text; padding:10px 8px; font-family:var(--admin-mono); font-size:0.95rem; font-weight:700; color:var(--admin-gold);" 
+                placeholder="بالنجوم ⭐" 
+                oninput="AdminApp.syncModalPriceFromStars(this.value)"
+              />
+              <input 
+                id="editProductPriceUsd" 
+                type="number" 
+                step="0.01" 
+                min="0.1" 
+                class="admin-btn secondary" 
+                style="width:90px; text-align:left; direction:ltr; cursor:text; padding:10px 8px; font-family:var(--admin-mono); font-size:0.95rem; font-weight:700; color:#38bdf8;" 
+                placeholder="$ USD" 
+                oninput="AdminApp.syncModalPriceFromUsd(this.value)"
+              />
+            </div>
+            <span style="font-size:0.68rem; color:var(--admin-text-sub); margin-top:2px; display:block;">
+              يمكنك كتابة السعر بالدولار $ ليتم حساب النجوم فورياً أو العكس.
+            </span>
+          </div>
+
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:700; color:#fff; margin-bottom:4px;">
+              <span>طريقة التسليم (Delivery)</span>
+            </label>
+            <select 
+              id="editProductType" 
+              class="admin-btn secondary" 
+              style="width:100%; padding:10px 12px; font-size:0.84rem; cursor:pointer;"
+            >
+              <option value="AUTO_DELIVERY">⚡ كود رقمي / بيانات (تسليم فوري)</option>
+              <option value="DIRECT_TOPUP">📱 شحن مباشر بالآيدي / نقل ملكية</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 4. Badge -->
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:700; color:#fff; margin-bottom:4px;">
+            <span>شارة العرض أو الخصم (Badge)</span>
+          </label>
+          <input 
+            id="editProductBadge" 
+            type="text" 
+            class="admin-btn secondary" 
+            style="width:100%; text-align:right; cursor:text; padding:9px 12px; font-size:0.84rem;" 
+            placeholder="مثال: خصم 15% VIP 🔥 أو حساب أسطوري 👑" 
+          />
+        </div>
+
+        <!-- 5. Description -->
+        <div>
+          <label style="display:block; font-size:0.8rem; font-weight:700; color:#fff; margin-bottom:4px;">
+            <span>وصف المنتج وملاحظات التسليم (Description)</span>
+          </label>
+          <textarea 
+            id="editProductDescription" 
+            class="admin-btn secondary" 
+            style="width:100%; height:75px; text-align:right; cursor:text; padding:9px 12px; font-size:0.84rem; resize:vertical;" 
+            placeholder="اكتب تفاصيل البطاقة أو معلومات الحساب هنا..."
+          ></textarea>
+        </div>
+
+        <div id="editProductErrorMsg" style="display:none; color:#ef4444; font-size:0.8rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; padding:8px 12px;"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px;">
+          <button class="admin-btn secondary" onclick="AdminApp.closeEditProductModal()">إلغاء</button>
+          <button id="editProductSubmitBtn" class="admin-btn success" style="padding:10px 18px;" onclick="AdminApp.submitEditProduct()">
+            <span>💾 حفظ ومزامنة مع Firebase</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BULK DEPOSIT STOCK CODES (التعبئة التلقائية) -->
+  <div class="admin-modal-overlay" id="stockModal">
+    <div class="admin-modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h3 id="stockModalTitle" style="font-size:1.15rem; font-weight:700;">إيداع أكواد المخزون</h3>
+        <button class="admin-btn secondary sm" onclick="AdminApp.closeStockModal()">✕</button>
+      </div>
+      <input type="hidden" id="stockTargetProductId" />
+      <p style="font-size:0.8rem; color:var(--admin-text-sub); margin-bottom:10px;">
+        الصق مجموعة الأكواد أو بيانات الحسابات هنا (كود في كل سطر). سيتم إضافتها فورياً وتحديث عداد المخزون (+X كود) تلقائياً!
+      </p>
+      <textarea id="stockCodesInput" style="width:100%; height:150px; background:#090b10; border:1px solid var(--admin-border); border-radius:12px; color:#fff; font-family:var(--admin-mono); font-size:0.85rem; padding:10px;" placeholder="BNC-CODE-1&#10;BNC-CODE-2&#10;BNC-CODE-3"></textarea>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px;">
+        <button class="admin-btn secondary" onclick="AdminApp.closeStockModal()">إلغاء</button>
+        <button class="admin-btn success" onclick="AdminApp.submitStockCodes()">⚡ إيداع الأكواد وتحديث العداد تلقائياً</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADMIN LOGIN -->
+  <div class="admin-modal-overlay" id="loginModal">
+    <div class="admin-modal-content" style="max-width:400px; text-align:center;">
+      <div style="font-size:36px; margin-bottom:10px;">🛡️</div>
+      <h3 style="font-size:1.2rem; font-weight:800; margin-bottom:6px;">تسجيل الدخول للإدارة</h3>
+      <p style="font-size:0.82rem; color:var(--admin-text-sub); margin-bottom:14px;">
+        أدخل المفتاح السري الخاص بلوحة التحكم للمتابعة.
+      </p>
+
+      <!-- Alert for error messages -->
+      <div id="loginErrorAlert" style="display:none; background:rgba(239, 68, 68, 0.15); border:1px solid #ef4444; color:#fca5a5; padding:10px 14px; border-radius:10px; font-size:0.85rem; margin-bottom:14px; text-align:center; font-weight:600; line-height:1.4;"></div>
+
+      <input 
+        id="adminKeyInput" 
+        type="password" 
+        class="admin-btn secondary" 
+        style="width:100%; text-align:center; padding:12px; font-size:1rem; margin-bottom:14px; cursor:text;" 
+        placeholder="أدخل المفتاح السري للوحة التحكم" 
+        onkeydown="if(event.key==='Enter') AdminApp.submitLogin()"
+      />
+      <button id="adminLoginBtn" class="admin-btn" style="width:100%; justify-content:center; padding:12px;" onclick="AdminApp.submitLogin()">
+        <span id="adminLoginBtnText">فتح لوحة التحكم</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Firebase SDK & VIP Card App Config -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/admin.js?v=1.3.5"></script>
+</body>
+</html>
