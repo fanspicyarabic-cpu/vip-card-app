@@ -13,8 +13,11 @@ const firebaseSync = require('./db/firebase-sync');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const WEBAPP_URL = process.env.WEBAPP_URL || `http://localhost:${PORT}`;
+const WEBAPP_URL = (process.env.WEBAPP_URL && process.env.WEBAPP_URL.startsWith('https://'))
+  ? process.env.WEBAPP_URL
+  : (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://vip-card-app.vercel.app');
 let ADMIN_SECRET_KEY = channelDb.state.settings.adminSecretKey || process.env.ADMIN_SECRET_KEY || 'vipadmin2026';
+
 
 app.use(cors());
 app.use(express.json());
@@ -134,24 +137,21 @@ function escapeHtmlTg(str) {
 }
 
 function getWelcomeMarkup() {
-  const isHttps = typeof WEBAPP_URL === 'string' && WEBAPP_URL.startsWith('https://');
-  const buttons = [];
-  
-  if (isHttps) {
-    buttons.push([Markup.button.webApp('🛍️ فتح المتجر الإلكتروني', WEBAPP_URL)]);
-  } else {
-    buttons.push([Markup.button.url('🛍️ فتح المتجر الإلكتروني', WEBAPP_URL)]);
-  }
+  const storeUrl = (typeof WEBAPP_URL === 'string' && WEBAPP_URL.startsWith('https://'))
+    ? WEBAPP_URL
+    : 'https://vip-card-app.vercel.app';
 
-  buttons.push([
-    Markup.button.callback('⚡ شحن الرصيد', 'btn_topup_info'),
-    Markup.button.callback('📦 سجل طلباتي', 'btn_orders_info')
-  ]);
-
-  buttons.push([
-    Markup.button.callback('👑 مميزات العضوية والولاء', 'btn_loyalty_info'),
-    Markup.button.callback('💬 الدعم الفني المباشر', 'btn_support_info')
-  ]);
+  const buttons = [
+    [Markup.button.webApp('🛍️ فتح المتجر الإلكتروني', storeUrl)],
+    [
+      Markup.button.callback('⚡ شحن الرصيد', 'btn_topup_info'),
+      Markup.button.callback('📦 سجل طلباتي', 'btn_orders_info')
+    ],
+    [
+      Markup.button.callback('👑 مميزات العضوية والولاء', 'btn_loyalty_info'),
+      Markup.button.callback('💬 الدعم الفني المباشر', 'btn_support_info')
+    ]
+  ];
 
   return Markup.inlineKeyboard(buttons);
 }
@@ -305,10 +305,11 @@ async function sendCustomerOrderNotification(userId, order) {
     await bot.telegram.sendMessage(userId, msg, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
-        [Markup.button.webApp('🛍️ فتح المتجر والخزنة', WEBAPP_URL)]
+        [Markup.button.webApp('🛍️ فتح المتجر والخزنة', (typeof WEBAPP_URL === 'string' && WEBAPP_URL.startsWith('https://')) ? WEBAPP_URL : 'https://vip-card-app.vercel.app')]
       ])
     });
   } catch (err) {
+
     // Customer might not have initiated bot chat
   }
 }
@@ -404,14 +405,18 @@ function setupBot(token) {
           await sendWelcomeMessage(ctx);
         } catch (err) {
           console.warn('Bot /start error:', err.message);
-          // Plain text fallback if HTML fails
           try {
             await ctx.reply('👑 أهلاً بك في VIP Card App! افتح المتجر لتصفح أحدث العروض والبطاقات:', {
               ...getWelcomeMarkup()
             });
-          } catch (e) {}
+          } catch (e) {
+            try {
+              await ctx.reply('👑 أهلاً بك في VIP Card App!\nمتجرك الرقمي الأول للبطاقات والشحن الفوري ⚡\nhttps://vip-card-app.vercel.app');
+            } catch (e2) {}
+          }
         }
       });
+
 
       // Quick Command Handlers
       bot.command(['shop', 'store', 'app'], async (ctx) => {
