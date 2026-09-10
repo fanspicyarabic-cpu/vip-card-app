@@ -383,7 +383,9 @@ function setupBot(token) {
         try { bot.stop(); } catch (e) {}
       }
 
-      bot = new Telegraf(currentToken);
+      bot = new Telegraf(currentToken, {
+        telegram: { webhookReply: false }
+      });
       channelDb.init(
         bot.telegram,
         channelDb.state.settings.storageChannelId || process.env.PRIVATE_DB_CHANNEL_ID || '-1004468909578',
@@ -393,6 +395,9 @@ function setupBot(token) {
       // Welcome Message Builder
       const sendWelcomeMessage = async (ctx) => {
         const user = ctx.from;
+        if (!user) return;
+        const chatId = (ctx.chat && ctx.chat.id) || user.id;
+
         const exists = await isExistingUser(user.id);
         const isNew = !exists;
 
@@ -413,7 +418,11 @@ function setupBot(token) {
 
         // Send login/entry notification to Admin Telegram Channel ONLY if new user
         if (isNew) {
-          sendAdminUserLoginNotification(user, true);
+          try {
+            await sendAdminUserLoginNotification(user, true);
+          } catch (e) {
+            console.warn('[Admin Notify Error]:', e.message);
+          }
         }
 
         // Record persistent entry log in Firestore
@@ -427,7 +436,10 @@ function setupBot(token) {
 
         const dbUser = channelDb.getUser(user.id);
         if (dbUser && dbUser.isBanned) {
-          return ctx.reply('⛔ عذراً، تم حظر حسابك من استخدام VIP Card App.');
+          try {
+            await bot.telegram.sendMessage(chatId, '⛔ عذراً، تم حظر حسابك من استخدام VIP Card App.');
+          } catch (e) {}
+          return;
         }
 
         const points = Number((dbUser && dbUser.points) || 0);
@@ -448,38 +460,59 @@ function setupBot(token) {
 ✨ رصيد نقاطك: ${points.toLocaleString('en-US')} نقطة
 🏆 مستوى العضوية: ${tierName}`;
 
-        await ctx.reply(welcomeHtml, {
-          parse_mode: 'HTML',
-          ...getWelcomeMarkup()
-        });
-      };
+        console.log(`[Bot /start] Dispatching welcome message to user ${user.id} (chatId: ${chatId})`);
 
-      // Bot /start handler
-      bot.start(async (ctx) => {
         try {
-          await sendWelcomeMessage(ctx);
+          // Attempt 1: Direct bot.telegram.sendMessage with HTML and WebApp Keyboard
+          await bot.telegram.sendMessage(chatId, welcomeHtml, {
+            parse_mode: 'HTML',
+            ...getWelcomeMarkup()
+          });
+          console.log(`[Bot /start] Successfully sent welcome message to user ${user.id}`);
         } catch (err) {
-          console.warn('Bot /start error:', err.message);
+          console.error(`[Bot /start Error] Failed sending HTML welcome message to ${chatId}:`, err.message);
+
+          // Attempt 2: Fallback with ctx.reply
           try {
-            const fallbackText = 
-`👑 <b>أهلاً بك في VIP Card App!</b>
+            await ctx.reply(welcomeHtml, {
+              parse_mode: 'HTML',
+              ...getWelcomeMarkup()
+            });
+            console.log(`[Bot /start] Sent welcome message via ctx.reply to ${user.id}`);
+          } catch (err2) {
+            console.error(`[Bot /start Error] ctx.reply also failed:`, err2.message);
+
+            // Attempt 3: Plain text without HTML tags
+            try {
+              const plainText = 
+`👑 أهلاً بك في VIP Card App!
 متجر البطاقات الرقمية والشحن الفوري
 
 ⚡ شحن فوري باستخدام نجوم تيليجرام (Telegram Stars - XTR)
 💳 باقات باينانس، أبل، جوجل بلاي، زين، STC، وبطاقات لايك كارد
 🎯 شحن مباشر لشدات ببجي بمعرف اللاعب
 
-✨ رصيد نقاطك: 0 نقطة
-🏆 مستوى العضوية: المستوى البرونزي 🥉`;
-            await ctx.reply(fallbackText, {
-              parse_mode: 'HTML',
-              ...getWelcomeMarkup()
-            });
-          } catch (e) {
-            try {
-              await ctx.reply('👑 أهلاً بك في VIP Card App!\nمتجر البطاقات الرقمية والشحن الفوري\nhttps://vip-card-app.vercel.app');
-            } catch (e2) {}
+✨ رصيد نقاطك: ${points} نقطة
+🏆 مستوى العضوية: ${tierName}`;
+
+              await bot.telegram.sendMessage(chatId, plainText, {
+                ...getWelcomeMarkup()
+              });
+              console.log(`[Bot /start] Sent plain text welcome message to ${user.id}`);
+            } catch (err3) {
+              console.error(`[Bot /start Error] All welcome message attempts failed:`, err3.message);
+            }
           }
+        }
+      };
+
+      // Bot /start handler
+      bot.start(async (ctx) => {
+        try {
+          console.log(`[Bot Command] Received /start from user: ${ctx.from ? ctx.from.id : 'unknown'}`);
+          await sendWelcomeMessage(ctx);
+        } catch (err) {
+          console.error('[Bot /start handler error]:', err.message);
         }
       });
 
@@ -809,12 +842,13 @@ app.post('/api/webhook', async (req, res) => {
     return res.status(503).json({ ok: false, error: 'Bot runtime not initialized' });
   }
   try {
-    await bot.handleUpdate(req.body, res);
+    // Process update asynchronously with direct Telegram API dispatch
+    await bot.handleUpdate(req.body);
     if (!res.headersSent) {
       res.status(200).json({ ok: true });
     }
   } catch (err) {
-    console.warn('[Webhook] Error handling update:', err.message);
+    console.error('[Webhook] Error handling update:', err.message);
     if (!res.headersSent) {
       res.status(200).json({ ok: true, error: err.message });
     }
