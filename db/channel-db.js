@@ -2180,24 +2180,16 @@ class ChannelDB {
           activeBroadcast: parsed.activeBroadcast || null,
           broadcastHistory: parsed.broadcastHistory || []
         };
-      } else {
-        this._saveToDisk();
       }
     } catch (err) {
-      console.error('[ChannelDB] Load error:', err.message);
+      console.warn('[ChannelDB] Notice loading local cache:', err.message);
     }
   }
 
   _saveToDisk() {
-    try {
-      const dir = path.dirname(LEDGER_CACHE_FILE);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      fs.writeFileSync(LEDGER_CACHE_FILE, JSON.stringify(this.state, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[ChannelDB] Save error:', err.message);
-    }
+    // Local JSON cache writing is permanently disabled for Vercel Serverless (read-only filesystem).
+    // All persistence is safely managed in Google Cloud Firestore.
+    return;
   }
 
   async appendToTelegramLedger(collection, payload) {

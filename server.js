@@ -50,29 +50,59 @@ let bot = null;
 const FIRESTORE_KEY = 'AIzaSyD4e1HCzmkYsTlSjkgSwSven5UWRQzrw6o';
 const FIRESTORE_BASE = 'https://firestore.googleapis.com/v1/projects/vipcardapp-app/databases/(default)/documents';
 
-async function syncUserToFirestore(u) {
-  if (!u || !u.userId) return;
+async function syncUserToFirestore(u, isNew = false) {
+  if (!u || (!u.userId && !u.id)) return;
+  const uid = String(u.userId || u.id);
   try {
-    const uid = String(u.userId);
-    const body = {
-      fields: {
-        userId: { stringValue: uid },
-        username: { stringValue: u.username || '' },
-        firstName: { stringValue: u.firstName || 'VIP Member' },
-        languageCode: { stringValue: u.languageCode || 'ar' },
-        points: { integerValue: String(u.points || 0) },
-        starsBalance: { integerValue: String(u.starsBalance || 0) },
-        isBanned: { booleanValue: Boolean(u.isBanned) },
-        joinedAt: { stringValue: u.joinedAt || new Date().toISOString() },
-        lastActive: { stringValue: new Date().toISOString() }
+    const fields = {};
+    const fieldPaths = [];
+
+    const addField = (name, val, type = 'stringValue') => {
+      if (val !== undefined && val !== null) {
+        fields[name] = type === 'integerValue' 
+          ? { integerValue: String(val) }
+          : type === 'booleanValue'
+            ? { booleanValue: Boolean(val) }
+            : { stringValue: String(val) };
+        fieldPaths.push(name);
       }
     };
-    await fetch(`${FIRESTORE_BASE}/users/${uid}?key=${FIRESTORE_KEY}`, {
+
+    addField('userId', uid);
+    if (u.username !== undefined) addField('username', u.username || '');
+    if (u.firstName !== undefined) addField('firstName', u.firstName || 'VIP Member');
+    if (u.languageCode !== undefined) addField('languageCode', u.languageCode || 'ar');
+    if (u.photoUrl !== undefined) addField('photoUrl', u.photoUrl);
+
+    if (isNew) {
+      addField('points', u.points !== undefined ? u.points : 0, 'integerValue');
+      addField('starsBalance', u.starsBalance !== undefined ? u.starsBalance : 0, 'integerValue');
+      addField('isBanned', Boolean(u.isBanned), 'booleanValue');
+      addField('joinedAt', u.joinedAt || new Date().toISOString());
+    } else {
+      if (u.points !== undefined && u.points !== null && u.points > 0) {
+        addField('points', u.points, 'integerValue');
+      }
+      if (u.starsBalance !== undefined && u.starsBalance !== null && u.starsBalance > 0) {
+        addField('starsBalance', u.starsBalance, 'integerValue');
+      }
+      if (u.isBanned !== undefined) {
+        addField('isBanned', Boolean(u.isBanned), 'booleanValue');
+      }
+    }
+    addField('lastActive', u.lastActive || new Date().toISOString());
+
+    const maskParams = fieldPaths.map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&');
+    const url = `${FIRESTORE_BASE}/users/${uid}?key=${FIRESTORE_KEY}${maskParams ? '&' + maskParams : ''}`;
+
+    await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify({ fields })
     });
-  } catch (err) {}
+  } catch (err) {
+    console.warn('[Firestore] Sync user error:', err.message);
+  }
 }
 
 async function syncOrderToFirestore(order) {
@@ -373,13 +403,13 @@ function setupBot(token) {
           languageCode: user.language_code
         });
 
-        // Sync immediately to Firestore so user appears in admin dashboard
+        // Sync immediately to Firestore with atomic merge so user data is permanently stored
         syncUserToFirestore(captured || {
           userId: user.id,
           username: user.username,
           firstName: user.first_name,
           languageCode: user.language_code
-        });
+        }, isNew);
 
         // Send login/entry notification to Admin Telegram Channel ONLY if new user
         if (isNew) {
@@ -816,13 +846,17 @@ app.get('/api/products/:id', (req, res) => {
 
 // 3. User Capturing & Profile
 app.post('/api/user/capture', async (req, res) => {
-  const { userId, username, firstName, languageCode } = req.body;
+  const { userId, username, firstName, languageCode, photoUrl } = req.body;
   if (!userId) return res.status(400).json({ success: false, error: 'User ID required' });
 
   const exists = await isExistingUser(userId);
   const isNew = !exists;
   const user = channelDb.captureUser({ userId, username, firstName, languageCode });
-  syncUserToFirestore(user);
+  if (photoUrl) user.photoUrl = photoUrl;
+
+  // Sync to Firestore with atomic merge semantics ({ merge: true })
+  syncUserToFirestore(user, isNew);
+
   if (isNew) {
     sendAdminUserLoginNotification(user, true);
   }
@@ -837,8 +871,35 @@ app.post('/api/user/capture', async (req, res) => {
 });
 
 
-app.get('/api/user/:userId', (req, res) => {
-  const user = channelDb.getUser(req.params.userId);
+app.get('/api/user/:userId', async (req, res) => {
+  const uid = String(req.params.userId);
+  let user = channelDb.state.users[uid];
+  if (!user) {
+    try {
+      const resp = await fetch(`${FIRESTORE_BASE}/users/${encodeURIComponent(uid)}?key=${FIRESTORE_KEY}`);
+      if (resp.ok) {
+        const doc = await resp.json();
+        if (doc && doc.fields) {
+          user = {
+            userId: uid,
+            username: doc.fields.username?.stringValue || '',
+            firstName: doc.fields.firstName?.stringValue || 'VIP Member',
+            languageCode: doc.fields.languageCode?.stringValue || 'ar',
+            points: Number(doc.fields.points?.integerValue || 0),
+            starsBalance: Number(doc.fields.starsBalance?.integerValue || 0),
+            isBanned: Boolean(doc.fields.isBanned?.booleanValue || false),
+            photoUrl: doc.fields.photoUrl?.stringValue || '',
+            joinedAt: doc.fields.joinedAt?.stringValue || doc.createTime || new Date().toISOString(),
+            lastActive: doc.fields.lastActive?.stringValue || doc.updateTime || new Date().toISOString()
+          };
+          channelDb.state.users[uid] = user;
+        }
+      }
+    } catch (e) {}
+  }
+  if (!user) {
+    user = channelDb.getUser(uid);
+  }
   res.json({ success: true, user });
 });
 
@@ -1439,7 +1500,33 @@ app.post('/api/admin/ban-user', adminAuth, async (req, res) => {
   res.json({ success: true, user });
 });
 
-app.get('/api/admin/users', adminAuth, (req, res) => {
+app.get('/api/admin/users', adminAuth, async (req, res) => {
+  try {
+    const resp = await fetch(`${FIRESTORE_BASE}/users?key=${FIRESTORE_KEY}&pageSize=300`);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && data.documents) {
+        const firestoreUsers = data.documents.map(doc => {
+          const fields = doc.fields || {};
+          const uid = fields.userId?.stringValue || doc.name.split('/').pop();
+          return {
+            userId: uid,
+            username: fields.username?.stringValue || '',
+            firstName: fields.firstName?.stringValue || 'VIP Member',
+            languageCode: fields.languageCode?.stringValue || 'ar',
+            points: Number(fields.points?.integerValue || 0),
+            starsBalance: Number(fields.starsBalance?.integerValue || 0),
+            isBanned: Boolean(fields.isBanned?.booleanValue || false),
+            photoUrl: fields.photoUrl?.stringValue || '',
+            joinedAt: fields.joinedAt?.stringValue || doc.createTime,
+            lastActive: fields.lastActive?.stringValue || doc.updateTime
+          };
+        });
+        firestoreUsers.forEach(u => { channelDb.state.users[u.userId] = u; });
+        return res.json({ success: true, users: firestoreUsers });
+      }
+    }
+  } catch (err) {}
   res.json({ success: true, users: channelDb.getUsers() });
 });
 
