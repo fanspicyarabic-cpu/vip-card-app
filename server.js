@@ -251,24 +251,53 @@ async function sendAdminSupportNotification(chat) {
   }
 }
 
-// Function to send admin notification for User Login / Bot Start
+// Reliable check if user already registered (memory + Firestore) to prevent repeat notifications
+async function isExistingUser(userId) {
+  if (!userId) return false;
+  const uid = String(userId);
+  if (channelDb.state.users && channelDb.state.users[uid]) {
+    return true;
+  }
+  try {
+    const res = await fetch(`${FIRESTORE_BASE}/users/${uid}?key=${FIRESTORE_KEY}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.fields) {
+        channelDb.state.users[uid] = {
+          userId: uid,
+          username: data.fields.username?.stringValue || '',
+          firstName: data.fields.firstName?.stringValue || 'VIP Member',
+          languageCode: data.fields.languageCode?.stringValue || 'ar',
+          points: Number(data.fields.points?.integerValue || 0),
+          starsBalance: Number(data.fields.starsBalance?.integerValue || 0),
+          isBanned: Boolean(data.fields.isBanned?.booleanValue || false),
+          joinedAt: data.fields.joinedAt?.stringValue || new Date().toISOString()
+        };
+        return true;
+      }
+    }
+  } catch (err) {}
+  return false;
+}
+
+// Function to send admin notification for NEW User Join only (never repeated on re-entry)
 async function sendAdminUserLoginNotification(user, isNew = false) {
+  if (!isNew) return; // Do not send notification on re-entry!
   if (!bot) return;
-  const ordersChannel = channelDb.state.settings.ordersChannelId || process.env.ADMIN_QUEUE_CHANNEL_ID;
+  const ordersChannel = channelDb.state.settings.ordersChannelId || process.env.ADMIN_QUEUE_CHANNEL_ID || '-1004487020026';
   if (!ordersChannel) return;
 
-  const title = isNew ? '🎉 <b>مستخدم جديد انضم للبوت!</b>' : '🚪 <b>تسجيل دخول جديد إلى البوت</b>';
   const uName = user.firstName || user.first_name || 'عضو VIP';
   const uId = user.userId || user.id || 'N/A';
   const uUsername = user.username ? `@${escapeHtmlTg(user.username)}` : 'غير متوفر';
 
-  const msg = `${title}\n\n` +
+  const msg = `🎉 <b>مستخدم جديد انضم للبوت!</b>\n\n` +
     `👤 <b>الاسم:</b> ${escapeHtmlTg(uName)}\n` +
     `🔗 <b>اليوزر:</b> ${uUsername}\n` +
     `🆔 <b>الآيدي (ID):</b> <code>${escapeHtmlTg(uId)}</code>\n` +
     `🌐 <b>اللغة:</b> ${user.languageCode || user.language_code || 'ar'}\n` +
-    `⏰ <b>الوقت:</b> ${new Date().toLocaleString('ar-EG', { timeZone: 'Asia/Riyadh' })}\n\n` +
-    `⚡ <i>تم توثيق الدخول في سجلات النظام</i>`;
+    `⏰ <b>تاريخ الانضمام:</b> ${new Date().toLocaleString('ar-EG', { timeZone: 'Asia/Riyadh' })}\n\n` +
+    `💾 <i>تم توثيق وحفظ بيانات المستخدم في قاعدة البيانات</i>`;
 
   try {
     await bot.telegram.sendMessage(ordersChannel, msg, { parse_mode: 'HTML' });
@@ -276,6 +305,7 @@ async function sendAdminUserLoginNotification(user, isNew = false) {
     console.warn('[Telegram Notifications] Admin user login dispatch warning:', err.message);
   }
 }
+
 
 
 // Function to notify customer directly on Telegram
@@ -315,7 +345,7 @@ async function sendCustomerOrderNotification(userId, order) {
 }
 
 function setupBot(token) {
-  const currentToken = token || channelDb.state.settings.botToken || process.env.BOT_TOKEN;
+  const currentToken = token || channelDb.state.settings.botToken || process.env.BOT_TOKEN || '8758269664:AAGvPI_tphAXSc6iQopIKXg_qOF3zDtNXy4';
 
   if (currentToken && currentToken !== 'your_telegram_bot_token_here') {
     try {
@@ -326,14 +356,16 @@ function setupBot(token) {
       bot = new Telegraf(currentToken);
       channelDb.init(
         bot.telegram,
-        channelDb.state.settings.storageChannelId || process.env.PRIVATE_DB_CHANNEL_ID,
-        channelDb.state.settings.ordersChannelId || process.env.ADMIN_QUEUE_CHANNEL_ID
+        channelDb.state.settings.storageChannelId || process.env.PRIVATE_DB_CHANNEL_ID || '-1004468909578',
+        channelDb.state.settings.ordersChannelId || process.env.ADMIN_QUEUE_CHANNEL_ID || '-1004487020026'
       );
 
       // Welcome Message Builder
       const sendWelcomeMessage = async (ctx) => {
         const user = ctx.from;
-        const isNew = !channelDb.state.users[String(user.id)];
+        const exists = await isExistingUser(user.id);
+        const isNew = !exists;
+
         const captured = channelDb.captureUser({
           userId: user.id,
           username: user.username,
@@ -349,8 +381,10 @@ function setupBot(token) {
           languageCode: user.language_code
         });
 
-        // Send login/entry notification to Admin Telegram Channel
-        sendAdminUserLoginNotification(user, isNew);
+        // Send login/entry notification to Admin Telegram Channel ONLY if new user
+        if (isNew) {
+          sendAdminUserLoginNotification(user, true);
+        }
 
         // Record persistent entry log in Firestore
         syncLoginLogToFirestore({
@@ -367,31 +401,22 @@ function setupBot(token) {
         }
 
         const points = Number((dbUser && dbUser.points) || 0);
-        const starsBalance = Number((dbUser && dbUser.starsBalance) || 0);
         let tierName = 'المستوى البرونزي 🥉';
         if (points >= 5000) tierName = 'المستوى التيتانيوم 🏆';
         else if (points >= 2000) tierName = 'المستوى البلاتيني 💎';
         else if (points >= 500) tierName = 'المستوى الذهبي ⭐️';
         else if (points >= 100) tierName = 'المستوى الفضي 🥈';
 
-        const safeName = escapeHtmlTg(user.first_name || 'عزيزي العميل');
-
         const welcomeHtml = 
-`👑 <b>أهلاً بك يا ${safeName} في VIP Card App!</b>
-<i>متجرك الرقمي الأول للبطاقات والشحن الفوري</i> ⚡
+`👑 <b>أهلاً بك في VIP Card App!</b>
+متجر البطاقات الرقمية والشحن الفوري
 
-💳 <b>الخدمات المتوفرة:</b>
-• بطاقات رقمية (Binance, Apple, Google Play, Razer, LikeCard)
-• باقات الاتصالات (STC, Zain, Mobily)
-• شحن مباشر للألعاب بالآيدي (PUBG Mobile, FreeFire, Yalla Ludo)
-• إيداع وشحن فوري باستخدام <b>نجوم تيليجرام (Telegram Stars - XTR)</b>
+⚡ شحن فوري باستخدام نجوم تيليجرام (Telegram Stars - XTR)
+💳 باقات باينانس، أبل، جوجل بلاي، زين، STC، وبطاقات لايك كارد
+🎯 شحن مباشر لشدات ببجي بمعرف اللاعب
 
-✨ <b>بيانات حسابك:</b>
-💰 <b>رصيد النجوم:</b> <code>${starsBalance.toLocaleString('en-US')}</code> ⭐
-🎁 <b>رصيد النقاط:</b> <code>${points.toLocaleString('en-US')}</code> نقطة
-🏆 <b>مستوى العضوية:</b> <b>${tierName}</b>
-
-<i>اضغط على الزر أدناه لفتح المتجر والبدء بالتسوق الفوري 👇</i>`;
+✨ رصيد نقاطك: ${points.toLocaleString('en-US')} نقطة
+🏆 مستوى العضوية: ${tierName}`;
 
         await ctx.reply(welcomeHtml, {
           parse_mode: 'HTML',
@@ -406,12 +431,23 @@ function setupBot(token) {
         } catch (err) {
           console.warn('Bot /start error:', err.message);
           try {
-            await ctx.reply('👑 أهلاً بك في VIP Card App! افتح المتجر لتصفح أحدث العروض والبطاقات:', {
+            const fallbackText = 
+`👑 <b>أهلاً بك في VIP Card App!</b>
+متجر البطاقات الرقمية والشحن الفوري
+
+⚡ شحن فوري باستخدام نجوم تيليجرام (Telegram Stars - XTR)
+💳 باقات باينانس، أبل، جوجل بلاي، زين، STC، وبطاقات لايك كارد
+🎯 شحن مباشر لشدات ببجي بمعرف اللاعب
+
+✨ رصيد نقاطك: 0 نقطة
+🏆 مستوى العضوية: المستوى البرونزي 🥉`;
+            await ctx.reply(fallbackText, {
+              parse_mode: 'HTML',
               ...getWelcomeMarkup()
             });
           } catch (e) {
             try {
-              await ctx.reply('👑 أهلاً بك في VIP Card App!\nمتجرك الرقمي الأول للبطاقات والشحن الفوري ⚡\nhttps://vip-card-app.vercel.app');
+              await ctx.reply('👑 أهلاً بك في VIP Card App!\nمتجر البطاقات الرقمية والشحن الفوري\nhttps://vip-card-app.vercel.app');
             } catch (e2) {}
           }
         }
@@ -779,11 +815,12 @@ app.get('/api/products/:id', (req, res) => {
 });
 
 // 3. User Capturing & Profile
-app.post('/api/user/capture', (req, res) => {
+app.post('/api/user/capture', async (req, res) => {
   const { userId, username, firstName, languageCode } = req.body;
   if (!userId) return res.status(400).json({ success: false, error: 'User ID required' });
 
-  const isNew = !channelDb.state.users[String(userId)];
+  const exists = await isExistingUser(userId);
+  const isNew = !exists;
   const user = channelDb.captureUser({ userId, username, firstName, languageCode });
   syncUserToFirestore(user);
   if (isNew) {
